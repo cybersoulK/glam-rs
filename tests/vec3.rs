@@ -17,6 +17,14 @@ macro_rules! impl_vec3_tests {
             assert_eq!([1 as $t, 2 as $t, 3 as $t], *V3.as_ref());
         });
 
+        glam_test!(test_vec3_consts, {
+            assert_eq!($vec3::ZERO, $new(0 as $t, 0 as $t, 0 as $t));
+            assert_eq!($vec3::ONE, $new(1 as $t, 1 as $t, 1 as $t));
+            assert_eq!($vec3::X, $new(1 as $t, 0 as $t, 0 as $t));
+            assert_eq!($vec3::Y, $new(0 as $t, 1 as $t, 0 as $t));
+            assert_eq!($vec3::Z, $new(0 as $t, 0 as $t, 1 as $t));
+        });
+
         glam_test!(test_new, {
             let v = $new(1 as $t, 2 as $t, 3 as $t);
 
@@ -492,11 +500,13 @@ macro_rules! impl_vec3_tests {
         glam_test!(test_sum, {
             let one = $vec3::ONE;
             assert_eq!(vec![one, one].iter().sum::<$vec3>(), one + one);
+            assert_eq!(vec![one, one].into_iter().sum::<$vec3>(), one + one);
         });
 
         glam_test!(test_product, {
             let two = $vec3::new(2 as $t, 2 as $t, 2 as $t);
             assert_eq!(vec![two, two].iter().product::<$vec3>(), two * two);
+            assert_eq!(vec![two, two].into_iter().product::<$vec3>(), two * two);
         });
     };
 }
@@ -564,14 +574,6 @@ macro_rules! impl_vec3_float_tests {
         glam_test!(test_nan, {
             assert!($vec3::NAN.is_nan());
             assert!(!$vec3::NAN.is_finite());
-        });
-
-        glam_test!(test_vec3_consts, {
-            assert_eq!($vec3::ZERO, $new(0 as $t, 0 as $t, 0 as $t));
-            assert_eq!($vec3::ONE, $new(1 as $t, 1 as $t, 1 as $t));
-            assert_eq!($vec3::X, $new(1 as $t, 0 as $t, 0 as $t));
-            assert_eq!($vec3::Y, $new(0 as $t, 1 as $t, 0 as $t));
-            assert_eq!($vec3::Z, $new(0 as $t, 0 as $t, 1 as $t));
         });
 
         glam_test!(test_funcs, {
