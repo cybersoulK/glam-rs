@@ -118,7 +118,7 @@ impl DMat4 {
     /// Creates a `[f64; 16]` array storing data in column major order.
     /// If you require data in row major order `transpose` the matrix first.
     #[inline]
-    pub fn to_cols_array(&self) -> [f64; 16] {
+    pub const fn to_cols_array(&self) -> [f64; 16] {
         [
             self.x_axis.x,
             self.x_axis.y,
@@ -155,7 +155,7 @@ impl DMat4 {
     /// Creates a `[[f64; 4]; 4]` 4D array storing data in column major order.
     /// If you require data in row major order `transpose` the matrix first.
     #[inline]
-    pub fn to_cols_array_2d(&self) -> [[f64; 4]; 4] {
+    pub const fn to_cols_array_2d(&self) -> [[f64; 4]; 4] {
         [
             self.x_axis.to_array(),
             self.y_axis.to_array(),
@@ -167,7 +167,7 @@ impl DMat4 {
     /// Creates a 4x4 matrix with its diagonal set to `diagonal` and all other entries set to 0.
     #[doc(alias = "scale")]
     #[inline]
-    pub fn from_diagonal(diagonal: DVec4) -> Self {
+    pub const fn from_diagonal(diagonal: DVec4) -> Self {
         Self::new(
             diagonal.x, 0.0, 0.0, 0.0, 0.0, diagonal.y, 0.0, 0.0, 0.0, 0.0, diagonal.z, 0.0, 0.0,
             0.0, 0.0, diagonal.w,

@@ -160,6 +160,12 @@ impl Vec3A {
         unsafe { dot3(self.0, rhs.0) }
     }
 
+    /// Returns a vector where every component is the dot product of `self` and `rhs`.
+    #[inline]
+    pub fn dot_into_vec(self, rhs: Self) -> Self {
+        Self(unsafe { dot3_into_m128(self.0, rhs.0) })
+    }
+
     /// Computes the cross product of `self` and `rhs`.
     #[inline]
     pub fn cross(self, rhs: Self) -> Self {
@@ -306,10 +312,20 @@ impl Vec3A {
     /// - `NAN` if the number is `NAN`
     #[inline]
     pub fn signum(self) -> Self {
-        let mask = self.cmpge(Self::ZERO);
-        let result = Self::select(mask, Self::ONE, Self::NEG_ONE);
-        let mask = self.is_nan_mask();
-        Self::select(mask, self, result)
+        unsafe {
+            let result = Self(_mm_or_ps(_mm_and_ps(self.0, Self::NEG_ONE.0), Self::ONE.0));
+            let mask = self.is_nan_mask();
+            Self::select(mask, self, result)
+        }
+    }
+
+    /// Returns a bitmask with the lowest 3 bits set to the sign bits from the elements of `self`.
+    ///
+    /// A negative element results in a `1` bit and a positive element in a `0` bit.  Element `x` goes
+    /// into the first lowest bit, element `y` into the second, etc.
+    #[inline]
+    pub fn is_negative_bitmask(self) -> u32 {
+        unsafe { (_mm_movemask_ps(self.0) as u32) & 0x7 }
     }
 
     /// Returns `true` if, and only if, all elements are finite.  If any element is either
@@ -987,7 +1003,7 @@ impl Neg for Vec3A {
     type Output = Self;
     #[inline]
     fn neg(self) -> Self {
-        Self(unsafe { _mm_sub_ps(Self::ZERO.0, self.0) })
+        Self(unsafe { _mm_xor_ps(_mm_set1_ps(-0.0), self.0) })
     }
 }
 

@@ -15,9 +15,13 @@ pub struct BVec3A {
 
 const MASK: [u32; 2] = [0, 0xff_ff_ff_ff];
 
-const FALSE: BVec3A = BVec3A::new(false, false, false);
-
 impl BVec3A {
+    /// All false.
+    pub const FALSE: Self = Self::splat(false);
+
+    /// All true.
+    pub const TRUE: Self = Self::splat(true);
+
     /// Creates a new vector mask.
     #[inline(always)]
     pub const fn new(x: bool, y: bool, z: bool) -> Self {
@@ -28,7 +32,13 @@ impl BVec3A {
         }
     }
 
-    /// Returns a bitmask with the lowest two bits set from the elements of `self`.
+    /// Creates a vector with all elements set to `v`.
+    #[inline]
+    pub const fn splat(v: bool) -> Self {
+        Self::new(v, v, v)
+    }
+
+    /// Returns a bitmask with the lowest 3 bits set from the elements of `self`.
     ///
     /// A true element results in a `1` bit and a false element in a `0` bit.  Element `x` goes
     /// into the first lowest bit, element `y` into the second, etc.
@@ -67,7 +77,7 @@ impl BVec3A {
 impl Default for BVec3A {
     #[inline]
     fn default() -> Self {
-        FALSE
+        Self::FALSE
     }
 }
 

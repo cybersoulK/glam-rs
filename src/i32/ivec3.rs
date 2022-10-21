@@ -147,6 +147,12 @@ impl IVec3 {
         (self.x * rhs.x) + (self.y * rhs.y) + (self.z * rhs.z)
     }
 
+    /// Returns a vector where every component is the dot product of `self` and `rhs`.
+    #[inline]
+    pub fn dot_into_vec(self, rhs: Self) -> Self {
+        Self::splat(self.dot(rhs))
+    }
+
     /// Computes the cross product of `self` and `rhs`.
     #[inline]
     pub fn cross(self, rhs: Self) -> Self {
@@ -292,6 +298,17 @@ impl IVec3 {
             y: self.y.signum(),
             z: self.z.signum(),
         }
+    }
+
+    /// Returns a bitmask with the lowest 3 bits set to the sign bits from the elements of `self`.
+    ///
+    /// A negative element results in a `1` bit and a positive element in a `0` bit.  Element `x` goes
+    /// into the first lowest bit, element `y` into the second, etc.
+    #[inline]
+    pub fn is_negative_bitmask(self) -> u32 {
+        (self.x.is_negative() as u32)
+            | (self.y.is_negative() as u32) << 1
+            | (self.z.is_negative() as u32) << 2
     }
 
     /// Casts all elements of `self` to `f32`.

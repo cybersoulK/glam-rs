@@ -1,6 +1,6 @@
 // Generated from mat.rs.tera template. Edit the template, not the generated file.
 
-use crate::{swizzles::*, DMat2, Mat3, Vec2};
+use crate::{swizzles::*, DMat2, Mat3, Mat3A, Vec2};
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
@@ -74,8 +74,8 @@ impl Mat2 {
     /// Creates a `[f32; 4]` array storing data in column major order.
     /// If you require data in row major order `transpose` the matrix first.
     #[inline]
-    pub fn to_cols_array(&self) -> [f32; 4] {
-        [self.x_axis.x, self.x_axis.y, self.y_axis.x, self.y_axis.y]
+    pub const fn to_cols_array(&self) -> [f32; 4] {
+        unsafe { *(self as *const Self as *const [f32; 4]) }
     }
 
     /// Creates a 2x2 matrix from a `[[f32; 2]; 2]` 2D array stored in column major order.
@@ -89,14 +89,14 @@ impl Mat2 {
     /// Creates a `[[f32; 2]; 2]` 2D array storing data in column major order.
     /// If you require data in row major order `transpose` the matrix first.
     #[inline]
-    pub fn to_cols_array_2d(&self) -> [[f32; 2]; 2] {
-        [self.x_axis.to_array(), self.y_axis.to_array()]
+    pub const fn to_cols_array_2d(&self) -> [[f32; 2]; 2] {
+        unsafe { *(self as *const Self as *const [[f32; 2]; 2]) }
     }
 
     /// Creates a 2x2 matrix with its diagonal set to `diagonal` and all other entries set to 0.
     #[doc(alias = "scale")]
     #[inline]
-    pub fn from_diagonal(diagonal: Vec2) -> Self {
+    pub const fn from_diagonal(diagonal: Vec2) -> Self {
         Self::new(diagonal.x, 0.0, 0.0, diagonal.y)
     }
 
@@ -118,6 +118,12 @@ impl Mat2 {
     /// Creates a 2x2 matrix from a 3x3 matrix, discarding the 2nd row and column.
     #[inline]
     pub fn from_mat3(m: Mat3) -> Self {
+        Self::from_cols(m.x_axis.xy(), m.y_axis.xy())
+    }
+
+    /// Creates a 2x2 matrix from a 3x3 matrix, discarding the 2nd row and column.
+    #[inline]
+    pub fn from_mat3a(m: Mat3A) -> Self {
         Self::from_cols(m.x_axis.xy(), m.y_axis.xy())
     }
 

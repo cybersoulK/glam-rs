@@ -145,6 +145,12 @@ impl Vec4 {
         dot4(self.0, rhs.0)
     }
 
+    /// Returns a vector where every component is the dot product of `self` and `rhs`.
+    #[inline]
+    pub fn dot_into_vec(self, rhs: Self) -> Self {
+        Self(unsafe { dot4_into_v128(self.0, rhs.0) })
+    }
+
     /// Returns a vector containing the minimum values for each element of `self` and `rhs`.
     ///
     /// In other words this computes `[self.x.min(rhs.x), self.y.min(rhs.y), ..]`.
@@ -269,10 +275,20 @@ impl Vec4 {
     /// - `NAN` if the number is `NAN`
     #[inline]
     pub fn signum(self) -> Self {
-        let mask = self.cmpge(Self::ZERO);
-        let result = Self::select(mask, Self::ONE, Self::NEG_ONE);
-        let mask = self.is_nan_mask();
-        Self::select(mask, self, result)
+        unsafe {
+            let result = Self(v128_or(v128_and(self.0, Self::NEG_ONE.0), Self::ONE.0));
+            let mask = self.is_nan_mask();
+            Self::select(mask, self, result)
+        }
+    }
+
+    /// Returns a bitmask with the lowest 4 bits set to the sign bits from the elements of `self`.
+    ///
+    /// A negative element results in a `1` bit and a positive element in a `0` bit.  Element `x` goes
+    /// into the first lowest bit, element `y` into the second, etc.
+    #[inline]
+    pub fn is_negative_bitmask(self) -> u32 {
+        u32x4_bitmask(self.0) as u32
     }
 
     /// Returns `true` if, and only if, all elements are finite.  If any element is either

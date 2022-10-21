@@ -1,6 +1,6 @@
 // Generated from mat.rs.tera template. Edit the template, not the generated file.
 
-use crate::{sse2::*, swizzles::*, DMat4, EulerRot, Mat3, Quat, Vec3, Vec3A, Vec4};
+use crate::{sse2::*, swizzles::*, DMat4, EulerRot, Mat3, Mat3A, Quat, Vec3, Vec3A, Vec4};
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
@@ -122,24 +122,15 @@ impl Mat4 {
     /// Creates a `[f32; 16]` array storing data in column major order.
     /// If you require data in row major order `transpose` the matrix first.
     #[inline]
-    pub fn to_cols_array(&self) -> [f32; 16] {
+    pub const fn to_cols_array(&self) -> [f32; 16] {
+        let [x_axis_x, x_axis_y, x_axis_z, x_axis_w] = self.x_axis.to_array();
+        let [y_axis_x, y_axis_y, y_axis_z, y_axis_w] = self.y_axis.to_array();
+        let [z_axis_x, z_axis_y, z_axis_z, z_axis_w] = self.z_axis.to_array();
+        let [w_axis_x, w_axis_y, w_axis_z, w_axis_w] = self.w_axis.to_array();
+
         [
-            self.x_axis.x,
-            self.x_axis.y,
-            self.x_axis.z,
-            self.x_axis.w,
-            self.y_axis.x,
-            self.y_axis.y,
-            self.y_axis.z,
-            self.y_axis.w,
-            self.z_axis.x,
-            self.z_axis.y,
-            self.z_axis.z,
-            self.z_axis.w,
-            self.w_axis.x,
-            self.w_axis.y,
-            self.w_axis.z,
-            self.w_axis.w,
+            x_axis_x, x_axis_y, x_axis_z, x_axis_w, y_axis_x, y_axis_y, y_axis_z, y_axis_w,
+            z_axis_x, z_axis_y, z_axis_z, z_axis_w, w_axis_x, w_axis_y, w_axis_z, w_axis_w,
         ]
     }
 
@@ -159,7 +150,7 @@ impl Mat4 {
     /// Creates a `[[f32; 4]; 4]` 4D array storing data in column major order.
     /// If you require data in row major order `transpose` the matrix first.
     #[inline]
-    pub fn to_cols_array_2d(&self) -> [[f32; 4]; 4] {
+    pub const fn to_cols_array_2d(&self) -> [[f32; 4]; 4] {
         [
             self.x_axis.to_array(),
             self.y_axis.to_array(),
@@ -171,10 +162,11 @@ impl Mat4 {
     /// Creates a 4x4 matrix with its diagonal set to `diagonal` and all other entries set to 0.
     #[doc(alias = "scale")]
     #[inline]
-    pub fn from_diagonal(diagonal: Vec4) -> Self {
+    pub const fn from_diagonal(diagonal: Vec4) -> Self {
+        // diagonal.x, diagonal.y etc can't be done in a const-context
+        let [x, y, z, w] = diagonal.to_array();
         Self::new(
-            diagonal.x, 0.0, 0.0, 0.0, 0.0, diagonal.y, 0.0, 0.0, 0.0, 0.0, diagonal.z, 0.0, 0.0,
-            0.0, 0.0, diagonal.w,
+            x, 0.0, 0.0, 0.0, 0.0, y, 0.0, 0.0, 0.0, 0.0, z, 0.0, 0.0, 0.0, 0.0, w,
         )
     }
 
@@ -290,6 +282,21 @@ impl Mat4 {
     /// [`Self::transform_point3()`] and [`Self::transform_vector3()`].
     #[inline]
     pub fn from_mat3(m: Mat3) -> Self {
+        Self::from_cols(
+            Vec4::from((m.x_axis, 0.0)),
+            Vec4::from((m.y_axis, 0.0)),
+            Vec4::from((m.z_axis, 0.0)),
+            Vec4::W,
+        )
+    }
+
+    /// Creates an affine transformation matrix from the given 3x3 linear transformation
+    /// matrix.
+    ///
+    /// The resulting matrix can be used to transform 3D points and vectors. See
+    /// [`Self::transform_point3()`] and [`Self::transform_vector3()`].
+    #[inline]
+    pub fn from_mat3a(m: Mat3A) -> Self {
         Self::from_cols(
             Vec4::from((m.x_axis, 0.0)),
             Vec4::from((m.y_axis, 0.0)),

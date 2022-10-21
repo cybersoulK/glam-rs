@@ -148,6 +148,12 @@ impl IVec4 {
         (self.x * rhs.x) + (self.y * rhs.y) + (self.z * rhs.z) + (self.w * rhs.w)
     }
 
+    /// Returns a vector where every component is the dot product of `self` and `rhs`.
+    #[inline]
+    pub fn dot_into_vec(self, rhs: Self) -> Self {
+        Self::splat(self.dot(rhs))
+    }
+
     /// Returns a vector containing the minimum values for each element of `self` and `rhs`.
     ///
     /// In other words this computes `[self.x.min(rhs.x), self.y.min(rhs.y), ..]`.
@@ -317,6 +323,18 @@ impl IVec4 {
             z: self.z.signum(),
             w: self.w.signum(),
         }
+    }
+
+    /// Returns a bitmask with the lowest 4 bits set to the sign bits from the elements of `self`.
+    ///
+    /// A negative element results in a `1` bit and a positive element in a `0` bit.  Element `x` goes
+    /// into the first lowest bit, element `y` into the second, etc.
+    #[inline]
+    pub fn is_negative_bitmask(self) -> u32 {
+        (self.x.is_negative() as u32)
+            | (self.y.is_negative() as u32) << 1
+            | (self.z.is_negative() as u32) << 2
+            | (self.w.is_negative() as u32) << 3
     }
 
     /// Casts all elements of `self` to `f32`.

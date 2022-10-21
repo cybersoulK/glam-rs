@@ -71,13 +71,12 @@ pub struct {{ self_t }}(pub(crate) {{ simd_t }});
 
 const MASK: [u32; 2] = [0, 0xff_ff_ff_ff];
 
-const FALSE: {{ self_t }} = {{ self_t }}::new(
-    {% for c in components %}
-        false,
-    {%- endfor %}
-);
-
 impl {{ self_t }} {
+    /// All false.
+    pub const FALSE: Self = Self::splat(false);
+
+    /// All true.
+    pub const TRUE: Self = Self::splat(true);
 
     /// Creates a new vector mask.
     #[inline(always)]
@@ -125,7 +124,17 @@ impl {{ self_t }} {
         {% endif %}
     }
 
-    /// Returns a bitmask with the lowest two bits set from the elements of `self`.
+    /// Creates a vector with all elements set to `v`.
+    #[inline]
+    pub const fn splat(v: bool) -> Self {
+        Self::new(
+            {% for c in components %}
+                v,
+            {%- endfor %}
+        )
+    }
+
+    /// Returns a bitmask with the lowest {{ dim }} bits set from the elements of `self`.
     ///
     /// A true element results in a `1` bit and a false element in a `0` bit.  Element `x` goes
     /// into the first lowest bit, element `y` into the second, etc.
@@ -266,7 +275,7 @@ impl {{ self_t }} {
 impl Default for {{ self_t }} {
     #[inline]
     fn default() -> Self {
-        FALSE
+        Self::FALSE
     }
 }
 

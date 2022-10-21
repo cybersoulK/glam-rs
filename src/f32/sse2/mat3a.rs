@@ -104,17 +104,14 @@ impl Mat3A {
     /// Creates a `[f32; 9]` array storing data in column major order.
     /// If you require data in row major order `transpose` the matrix first.
     #[inline]
-    pub fn to_cols_array(&self) -> [f32; 9] {
+    pub const fn to_cols_array(&self) -> [f32; 9] {
+        let [x_axis_x, x_axis_y, x_axis_z] = self.x_axis.to_array();
+        let [y_axis_x, y_axis_y, y_axis_z] = self.y_axis.to_array();
+        let [z_axis_x, z_axis_y, z_axis_z] = self.z_axis.to_array();
+
         [
-            self.x_axis.x,
-            self.x_axis.y,
-            self.x_axis.z,
-            self.y_axis.x,
-            self.y_axis.y,
-            self.y_axis.z,
-            self.z_axis.x,
-            self.z_axis.y,
-            self.z_axis.z,
+            x_axis_x, x_axis_y, x_axis_z, y_axis_x, y_axis_y, y_axis_z, z_axis_x, z_axis_y,
+            z_axis_z,
         ]
     }
 
@@ -133,7 +130,7 @@ impl Mat3A {
     /// Creates a `[[f32; 3]; 3]` 3D array storing data in column major order.
     /// If you require data in row major order `transpose` the matrix first.
     #[inline]
-    pub fn to_cols_array_2d(&self) -> [[f32; 3]; 3] {
+    pub const fn to_cols_array_2d(&self) -> [[f32; 3]; 3] {
         [
             self.x_axis.to_array(),
             self.y_axis.to_array(),
@@ -144,7 +141,7 @@ impl Mat3A {
     /// Creates a 3x3 matrix with its diagonal set to `diagonal` and all other entries set to 0.
     #[doc(alias = "scale")]
     #[inline]
-    pub fn from_diagonal(diagonal: Vec3) -> Self {
+    pub const fn from_diagonal(diagonal: Vec3) -> Self {
         Self::new(
             diagonal.x, 0.0, 0.0, 0.0, diagonal.y, 0.0, 0.0, 0.0, diagonal.z,
         )

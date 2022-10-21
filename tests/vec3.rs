@@ -316,6 +316,11 @@ macro_rules! impl_vec3_tests {
             );
         });
 
+        glam_test!(test_mask_splat, {
+            assert_eq!($mask::splat(false), $mask::new(false, false, false));
+            assert_eq!($mask::splat(true), $mask::new(true, true, true));
+        });
+
         glam_test!(test_mask_bitmask, {
             assert_eq!($mask::new(false, false, false).bitmask(), 0b000);
             assert_eq!($mask::new(true, false, false).bitmask(), 0b001);
@@ -518,6 +523,14 @@ macro_rules! impl_vec3_signed_tests {
         glam_test!(test_neg, {
             let a = $new(1 as $t, 2 as $t, 3 as $t);
             assert_eq!((-1 as $t, -2 as $t, -3 as $t), (-a).into());
+            assert_eq!(
+                $new(-0.0 as $t, -0.0 as $t, -0.0 as $t),
+                -$new(0.0 as $t, 0.0 as $t, 0.0 as $t)
+            );
+            assert_eq!(
+                $new(0.0 as $t, -0.0 as $t, -0.0 as $t),
+                -$new(-0.0 as $t, 0.0 as $t, 0.0 as $t)
+            );
         });
 
         glam_test!(test_dot_signed, {
@@ -599,6 +612,10 @@ macro_rules! impl_vec3_float_tests {
                 $new(1.0, 2.0, 3.0).dot($new(4.0, 5.0, 6.0))
             );
             assert_eq!(
+                $new(14.0, 14.0, 14.0),
+                $new(0.0, 4.0, 6.0).dot_into_vec($new(3.0, 2.0, 1.0))
+            );
+            assert_eq!(
                 2.0 * 2.0 + 3.0 * 3.0 + 4.0 * 4.0,
                 $new(2.0, 3.0, 4.0).length_squared()
             );
@@ -643,12 +660,24 @@ macro_rules! impl_vec3_float_tests {
 
         glam_test!(test_signum, {
             assert_eq!($vec3::ZERO.signum(), $vec3::ONE);
-            assert_eq!(-$vec3::ZERO.signum(), -$vec3::ONE);
+            assert_eq!((-$vec3::ZERO).signum(), -$vec3::ONE);
             assert_eq!($vec3::ONE.signum(), $vec3::ONE);
             assert_eq!((-$vec3::ONE).signum(), -$vec3::ONE);
             assert_eq!($vec3::splat(INFINITY).signum(), $vec3::ONE);
             assert_eq!($vec3::splat(NEG_INFINITY).signum(), -$vec3::ONE);
             assert!($vec3::splat(NAN).signum().is_nan_mask().all());
+        });
+
+        glam_test!(test_is_negative_bitmask, {
+            assert_eq!($vec3::ZERO.is_negative_bitmask(), 0b000);
+            assert_eq!((-$vec3::ZERO).is_negative_bitmask(), 0b111);
+            assert_eq!($vec3::ONE.is_negative_bitmask(), 0b000);
+            assert_eq!((-$vec3::ONE).is_negative_bitmask(), 0b111);
+            assert_eq!($vec3::new(-0.1, 0.2, 0.3).is_negative_bitmask(), 0b001);
+            assert_eq!($vec3::new(0.8, 0.3, 0.1).is_negative_bitmask(), 0b000);
+            assert_eq!($vec3::new(0.1, 0.5, -0.3).is_negative_bitmask(), 0b100);
+            assert_eq!($vec3::new(0.3, -0.4, 0.1).is_negative_bitmask(), 0b010);
+            assert_eq!($vec3::new(-0.2, 0.6, -0.5).is_negative_bitmask(), 0b101);
         });
 
         glam_test!(test_abs, {

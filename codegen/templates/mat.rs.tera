@@ -18,11 +18,9 @@
     {% set affine3_t = "Affine3A" %}
     {% set vec2_t = "Vec2" %}
     {% set vec3_t = "Vec3" %}
-    {% set vec3a_t = "Vec3A" %}
     {% set vec4_t = "Vec4" %}
     {% set mat2_t = "Mat2" %}
     {% set mat3_t = "Mat3" %}
-    {% set mat3a_t = "Mat3A" %}
     {% set mat4_t = "Mat4" %}
 {% elif scalar_t == "f64" %}
     {% set vecn_t = "DVec" ~ dim %}
@@ -66,19 +64,22 @@ use crate::{
 {% endif %}
 {% if dim == 2 %}
     {{ mat3_t }}, {{ vec2_t }},
+    {% if scalar_t == "f32" %}
+        Mat3A,
+    {% endif %}
 {% elif dim == 3 %}
     EulerRot,
     {{ mat2_t }}, {{ mat4_t }}, {{ quat_t }}, {{ vec2_t }}, {{ col_t }},
     {% if is_align %}
         {{ mat3_t }}, {{ vec3_t }},
     {% elif scalar_t == "f32" %}
-        {{ mat3a_t }}, {{ vec3a_t }},
+        Mat3A, Vec3A,
     {% endif %}
 {% elif dim == 4 %}
     EulerRot,
     {{ mat3_t }}, {{ quat_t }}, {{ vec3_t }}, {{ col_t }},
     {% if scalar_t == "f32" %}
-        {{ vec3a_t }},
+        Mat3A, Vec3A,
     {% endif %}
 {% endif %}
 {% if self_t == "Mat4" %}
@@ -302,14 +303,28 @@ impl {{ self_t }} {
     /// Creates a `[{{ scalar_t }}; {{ size }}]` array storing data in column major order.
     /// If you require data in row major order `transpose` the matrix first.
     #[inline]
-    pub fn to_cols_array(&self) -> [{{ scalar_t }}; {{ size }}] {
-        [
-            {% for axis in axes %}
-                {% for c in components %}
-                    self.{{ axis }}.{{ c }},
+    pub const fn to_cols_array(&self) -> [{{ scalar_t }}; {{ size }}] {
+        {% if self_t == "Mat2" and not is_scalar %}
+            unsafe { *(self as *const Self as *const [f32; 4]) }
+        {% else %}
+            {% if dim >= 2 and not is_scalar %}
+                {% for axis in axes %}
+                    let [{% for c in components %} {{ axis }}_{{ c }}, {% endfor %}] = self.{{ axis }}.to_array();
                 {%- endfor %}
-            {%- endfor %}
-        ]
+            {% endif %}
+
+            [
+                {% for axis in axes %}
+                    {% for c in components %}
+                        {% if dim >= 2 and not is_scalar %}
+                            {{ axis }}_{{ c }},
+                        {% else %}
+                            self.{{ axis }}.{{ c }},
+                        {% endif %}
+                    {%- endfor %}
+                {%- endfor %}
+            ]
+        {% endif %}
     }
 
     /// Creates a {{ nxn }} matrix from a `[[{{ scalar_t }}; {{ dim }}]; {{ dim }}]` {{ dim }}D array stored in column major order.
@@ -327,29 +342,49 @@ impl {{ self_t }} {
     /// Creates a `[[{{ scalar_t }}; {{ dim }}]; {{ dim }}]` {{ dim }}D array storing data in column major order.
     /// If you require data in row major order `transpose` the matrix first.
     #[inline]
-    pub fn to_cols_array_2d(&self) -> [[{{ scalar_t }}; {{ dim }}]; {{ dim }}] {
-        [
-            {% for axis in axes %}
+    pub const fn to_cols_array_2d(&self) -> [[{{ scalar_t }}; {{ dim }}]; {{ dim }}] {
+        {% if self_t == "Mat2" and not is_scalar %}
+            unsafe { *(self as *const Self as *const [[f32; 2]; 2]) }
+        {% else %}
+            [
+                {% for axis in axes %}
                 self.{{ axis }}.to_array(),
-            {%- endfor %}
-        ]
+                {%- endfor %}
+            ]
+        {% endif %}
     }
 
     /// Creates a {{ nxn }} matrix with its diagonal set to `diagonal` and all other entries set to 0.
     #[doc(alias = "scale")]
     #[inline]
-    pub fn from_diagonal(diagonal: {{ vecn_t }}) -> Self {
-        Self::new(
-            {% for i in range(end = dim) %}
-                {% for j in range(end = dim) %}
-                    {% if i == j %}
-                        diagonal.{{ components[i] }},
-                    {% else %}
-                        0.0,
-                    {% endif %}
+    pub const fn from_diagonal(diagonal: {{ vecn_t }}) -> Self {
+        {% if self_t == "Mat4" and not is_scalar %}
+            // diagonal.x, diagonal.y etc can't be done in a const-context
+            let [x, y, z, w] = diagonal.to_array();
+            Self::new(
+                {% for i in range(end = dim) %}
+                    {% for j in range(end = dim) %}
+                        {% if i == j %}
+                            {{ components[i] }},
+                        {% else %}
+                            0.0,
+                        {% endif %}
+                    {%- endfor %}
                 {%- endfor %}
-            {%- endfor %}
-        )
+            )
+        {% else %}
+            Self::new(
+                {% for i in range(end = dim) %}
+                    {% for j in range(end = dim) %}
+                        {% if i == j %}
+                            diagonal.{{ components[i] }},
+                        {% else %}
+                            0.0,
+                        {% endif %}
+                    {%- endfor %}
+                {%- endfor %}
+            )
+        {% endif %}
     }
 
 {% if dim == 2 %}
@@ -373,6 +408,16 @@ impl {{ self_t }} {
     pub fn from_mat3(m: {{ mat3_t }}) -> Self {
         Self::from_cols(m.x_axis.xy(), m.y_axis.xy())
     }
+
+{% if scalar_t == "f32" %}
+    /// Creates a {{ nxn }} matrix from a 3x3 matrix, discarding the 2nd row and column.
+    #[inline]
+    pub fn from_mat3a(m: Mat3A) -> Self {
+        {# TODO: SIMD optimise #}
+        Self::from_cols(m.x_axis.xy(), m.y_axis.xy())
+    }
+{% endif %}
+
 {% elif dim == 3 %}
     /// Creates a 3x3 matrix from a 4x4 matrix, discarding the 4th row and column.
     pub fn from_mat4(m: {{ mat4_t }}) -> Self {
@@ -682,6 +727,23 @@ impl {{ self_t }} {
             {{ col_t }}::W,
         )
     }
+
+{% if scalar_t == "f32" %}
+    /// Creates an affine transformation matrix from the given 3x3 linear transformation
+    /// matrix.
+    ///
+    /// The resulting matrix can be used to transform 3D points and vectors. See
+    /// [`Self::transform_point3()`] and [`Self::transform_vector3()`].
+    #[inline]
+    pub fn from_mat3a(m: Mat3A) -> Self {
+        Self::from_cols(
+            Vec4::from((m.x_axis, 0.0)),
+            Vec4::from((m.y_axis, 0.0)),
+            Vec4::from((m.z_axis, 0.0)),
+            Vec4::W,
+        )
+    }
+{% endif %}
 
     /// Creates an affine transformation matrix from the given 3D `translation`.
     ///

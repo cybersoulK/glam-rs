@@ -1,6 +1,6 @@
 // Generated from mat.rs.tera template. Edit the template, not the generated file.
 
-use crate::{swizzles::*, DMat4, EulerRot, Mat3, Quat, Vec3, Vec3A, Vec4};
+use crate::{swizzles::*, DMat4, EulerRot, Mat3, Mat3A, Quat, Vec3, Vec3A, Vec4};
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
@@ -124,7 +124,7 @@ impl Mat4 {
     /// Creates a `[f32; 16]` array storing data in column major order.
     /// If you require data in row major order `transpose` the matrix first.
     #[inline]
-    pub fn to_cols_array(&self) -> [f32; 16] {
+    pub const fn to_cols_array(&self) -> [f32; 16] {
         [
             self.x_axis.x,
             self.x_axis.y,
@@ -161,7 +161,7 @@ impl Mat4 {
     /// Creates a `[[f32; 4]; 4]` 4D array storing data in column major order.
     /// If you require data in row major order `transpose` the matrix first.
     #[inline]
-    pub fn to_cols_array_2d(&self) -> [[f32; 4]; 4] {
+    pub const fn to_cols_array_2d(&self) -> [[f32; 4]; 4] {
         [
             self.x_axis.to_array(),
             self.y_axis.to_array(),
@@ -173,7 +173,7 @@ impl Mat4 {
     /// Creates a 4x4 matrix with its diagonal set to `diagonal` and all other entries set to 0.
     #[doc(alias = "scale")]
     #[inline]
-    pub fn from_diagonal(diagonal: Vec4) -> Self {
+    pub const fn from_diagonal(diagonal: Vec4) -> Self {
         Self::new(
             diagonal.x, 0.0, 0.0, 0.0, 0.0, diagonal.y, 0.0, 0.0, 0.0, 0.0, diagonal.z, 0.0, 0.0,
             0.0, 0.0, diagonal.w,
@@ -292,6 +292,21 @@ impl Mat4 {
     /// [`Self::transform_point3()`] and [`Self::transform_vector3()`].
     #[inline]
     pub fn from_mat3(m: Mat3) -> Self {
+        Self::from_cols(
+            Vec4::from((m.x_axis, 0.0)),
+            Vec4::from((m.y_axis, 0.0)),
+            Vec4::from((m.z_axis, 0.0)),
+            Vec4::W,
+        )
+    }
+
+    /// Creates an affine transformation matrix from the given 3x3 linear transformation
+    /// matrix.
+    ///
+    /// The resulting matrix can be used to transform 3D points and vectors. See
+    /// [`Self::transform_point3()`] and [`Self::transform_vector3()`].
+    #[inline]
+    pub fn from_mat3a(m: Mat3A) -> Self {
         Self::from_cols(
             Vec4::from((m.x_axis, 0.0)),
             Vec4::from((m.y_axis, 0.0)),
