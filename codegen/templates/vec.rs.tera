@@ -22,6 +22,7 @@
     {% if scalar_t == "f32" %}
         {% if dim == 3 and is_simd or is_align %}
             {% set self_t = "Vec3A" %}
+            {% set mask_t = "BVec3A" %}
         {% else %}
             {% set self_t = "Vec" ~ dim %}
         {% endif %}
@@ -298,7 +299,11 @@ impl {{ self_t }} {
         {% if is_scalar %}
             Self {
                 {% for c in components %}
-                    {{ c  }}: if mask.{{ c }} { if_true.{{ c }} } else { if_false.{{ c }} },
+                    {%- if is_align %}
+                        {{ c  }}: if mask.{{ c }} != 0 { if_true.{{ c }} } else { if_false.{{ c }} },
+                    {%- else %}
+                        {{ c  }}: if mask.{{ c }} { if_true.{{ c }} } else { if_false.{{ c }} },
+                    {%- endif %}
                 {%- endfor %}
             }
         {% elif is_sse2 %}
@@ -820,6 +825,32 @@ impl {{ self_t }} {
                 let result = Self(v128_or(v128_and(self.0, Self::NEG_ONE.0), Self::ONE.0));
                 let mask = self.is_nan_mask();
                 Self::select(mask, self, result)
+            }
+        {% endif %}
+    }
+
+    /// Returns a vector with signs of `rhs` and the magnitudes of `self`.
+    #[inline]
+    pub fn copysign(self, rhs: Self) -> Self {
+        {% if is_scalar and is_float %}
+            Self {
+                {% for c in components %}
+                    {{ c }}: self.{{ c }}.copysign(rhs.{{ c }}),
+                {%- endfor %}
+            }
+        {% elif is_scalar %}
+            Self::select(rhs.cmpge(Self::ZERO), self, -self)
+        {% elif is_coresimd %}
+            Self(self.0.copysign(rhs.0))
+        {% elif is_sse2 %}
+            unsafe {
+                let mask = Self::splat(-0.0);
+                Self(_mm_or_ps(_mm_and_ps(rhs.0, mask.0), _mm_andnot_ps(mask.0, self.0)))
+            }
+        {% elif is_wasm32 %}
+            unsafe {
+                let mask = Self::splat(-0.0);
+                Self(v128_or(v128_and(rhs.0, mask.0), v128_andnot(self.0, mask.0)))
             }
         {% endif %}
     }
