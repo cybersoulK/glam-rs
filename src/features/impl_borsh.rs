@@ -30,7 +30,7 @@ macro_rules! impl_borsh {
 
         impl borsh::BorshDeserialize for $type {
             #[inline]
-            fn deserialize_reader<R: borsh::maybestd::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+            fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
 
                 let arr = <$array_type>::deserialize_reader(reader)?;
                 let glam = Self::from_array(arr);
