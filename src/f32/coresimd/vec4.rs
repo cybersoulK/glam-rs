@@ -20,9 +20,11 @@ pub const fn vec4(x: f32, y: f32, z: f32, w: f32) -> Vec4 {
     Vec4::new(x, y, z, w)
 }
 
-/// A 4-dimensional vector with SIMD support.
+/// A 4-dimensional vector.
 ///
-/// This type uses 16 byte aligned SIMD vector type for storage.
+/// SIMD vector types are used for storage on supported platforms.
+///
+/// This type is 16 byte aligned.
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct Vec4(pub(crate) f32x4);
@@ -610,6 +612,18 @@ impl Vec4 {
     #[inline]
     pub fn as_uvec4(&self) -> crate::UVec4 {
         crate::UVec4::new(self.x as u32, self.y as u32, self.z as u32, self.w as u32)
+    }
+
+    /// Casts all elements of `self` to `i64`.
+    #[inline]
+    pub fn as_i64vec4(&self) -> crate::I64Vec4 {
+        crate::I64Vec4::new(self.x as i64, self.y as i64, self.z as i64, self.w as i64)
+    }
+
+    /// Casts all elements of `self` to `u64`.
+    #[inline]
+    pub fn as_u64vec4(&self) -> crate::U64Vec4 {
+        crate::U64Vec4::new(self.x as u64, self.y as u64, self.z as u64, self.w as u64)
     }
 }
 

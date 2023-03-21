@@ -19,6 +19,10 @@
   * vectors: [`IVec2`], [`IVec3`] and [`IVec4`]
 * [`u32`](mod@u32) types
   * vectors: [`UVec2`], [`UVec3`] and [`UVec4`]
+* [`i64`](mod@i64) types
+  * vectors: [`I64Vec2`], [`I64Vec3`] and [`I64Vec4`]
+* [`u64`](mod@u64) types
+  * vectors: [`U64Vec2`], [`U64Vec3`] and [`U64Vec4`]
 * [`bool`](mod@bool) types
   * vectors: [`BVec2`], [`BVec3`] and [`BVec4`]
 
@@ -246,7 +250,7 @@ and benchmarks.
 The minimum supported Rust version is `1.58.1`.
 
 */
-#![doc(html_root_url = "https://docs.rs/glam/0.22.0")]
+#![doc(html_root_url = "https://docs.rs/glam/0.23.0")]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(target_arch = "spirv", feature(repr_simd))]
 #![deny(
@@ -316,6 +320,14 @@ pub use self::i32::*;
 /** `u32` vector types. */
 pub mod u32;
 pub use self::u32::*;
+
+/** `i64` vector types. */
+pub mod i64;
+pub use self::i64::*;
+
+/** `u64` vector types. */
+pub mod u64;
+pub use self::u64::*;
 
 /** Traits adding swizzle methods to all vector types. */
 pub mod swizzles;

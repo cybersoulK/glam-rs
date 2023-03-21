@@ -148,6 +148,19 @@ macro_rules! impl_vec4_tests {
             assert_eq!(0 as $t, z.dot(w));
         });
 
+        glam_test!(test_length_squared_unsigned, {
+            let x = $new(1 as $t, 0 as $t, 0 as $t, 0 as $t);
+            let z = $new(0 as $t, 0 as $t, 1 as $t, 0 as $t);
+            let w = $new(0 as $t, 0 as $t, 0 as $t, 1 as $t);
+            assert_eq!(4 as $t, (2 as $t * x).length_squared());
+            assert_eq!(16 as $t, (4 as $t * z).length_squared());
+            assert_eq!(64 as $t, (8 as $t * w).length_squared());
+            assert_eq!(
+                2 as $t * 2 as $t + 3 as $t * 3 as $t + 4 as $t * 4 as $t + 5 as $t * 5 as $t,
+                $new(2 as $t, 3 as $t, 4 as $t, 5 as $t).length_squared()
+            );
+        });
+
         glam_test!(test_ops, {
             let a = $new(2 as $t, 4 as $t, 8 as $t, 16 as $t);
             assert_eq!($new(4 as $t, 8 as $t, 16 as $t, 32 as $t), a + a);
@@ -615,6 +628,23 @@ macro_rules! impl_vec4_signed_tests {
             assert_eq!(0 as $t, x.dot(-z));
             assert_eq!(-1 as $t, w.dot(-w));
         });
+
+        glam_test!(test_length_squared_signed, {
+            let x = $new(1 as $t, 0 as $t, 0 as $t, 0 as $t);
+            let y = $new(0 as $t, 1 as $t, 0 as $t, 0 as $t);
+            let z = $new(0 as $t, 0 as $t, 1 as $t, 0 as $t);
+            let w = $new(0 as $t, 0 as $t, 0 as $t, 1 as $t);
+            assert_eq!(4 as $t, (2 as $t * x).length_squared());
+            assert_eq!(9 as $t, (-3 as $t * y).length_squared());
+            assert_eq!(16 as $t, (4 as $t * z).length_squared());
+            assert_eq!(64 as $t, (8 as $t * w).length_squared());
+            assert_eq!(
+                2 as $t * 2 as $t + 3 as $t * 3 as $t + 4 as $t * 4 as $t + 5 as $t * 5 as $t,
+                $new(2 as $t, 3 as $t, 4 as $t, 5 as $t).length_squared()
+            );
+            assert_eq!(2 as $t, x.distance_squared(y));
+            assert_eq!(13 as $t, (2 as $t * x).distance_squared(-3 as $t * z));
+        });
     };
 }
 
@@ -668,16 +698,10 @@ macro_rules! impl_vec4_float_tests {
             let y = $new(0.0, 1.0, 0.0, 0.0);
             let z = $new(0.0, 0.0, 1.0, 0.0);
             let w = $new(0.0, 0.0, 0.0, 1.0);
-            assert_eq!(4.0, (2.0 * x).length_squared());
-            assert_eq!(9.0, (-3.0 * y).length_squared());
-            assert_eq!(16.0, (4.0 * z).length_squared());
-            assert_eq!(64.0, (8.0 * w).length_squared());
             assert_eq!(2.0, (-2.0 * x).length());
             assert_eq!(3.0, (3.0 * y).length());
             assert_eq!(4.0, (-4.0 * z).length());
             assert_eq!(5.0, (-5.0 * w).length());
-            assert_eq!(2.0, x.distance_squared(y));
-            assert_eq!(13.0, (2.0 * x).distance_squared(-3.0 * z));
             assert_eq!((2.0 as $t).sqrt(), w.distance(y));
             assert_eq!(5.0, (3.0 * x).distance(-4.0 * y));
             assert_eq!(13.0, (-5.0 * w).distance(12.0 * y));
@@ -689,10 +713,6 @@ macro_rules! impl_vec4_float_tests {
             assert_eq!(
                 $new(28.0, 28.0, 28.0, 28.0),
                 $new(0.0, 5.0, 3.0, 6.0).dot_into_vec($new(7.0, 2.0, 4.0, 1.0))
-            );
-            assert_eq!(
-                2.0 * 2.0 + 3.0 * 3.0 + 4.0 * 4.0 + 5.0 * 5.0,
-                $new(2.0, 3.0, 4.0, 5.0).length_squared()
             );
             assert_eq!(
                 (2.0 as $t * 2.0 + 3.0 * 3.0 + 4.0 * 4.0 + 5.0 * 5.0).sqrt(),
@@ -1205,7 +1225,7 @@ mod vec4 {
     }
 
     glam_test!(test_as, {
-        use glam::{DVec4, IVec4, UVec4};
+        use glam::{DVec4, I64Vec4, IVec4, U64Vec4, UVec4};
         assert_eq!(
             DVec4::new(-1.0, -2.0, -3.0, -4.0),
             Vec4::new(-1.0, -2.0, -3.0, -4.0).as_dvec4()
@@ -1217,6 +1237,14 @@ mod vec4 {
         assert_eq!(
             UVec4::new(1, 2, 3, 4),
             Vec4::new(1.0, 2.0, 3.0, 4.0).as_uvec4()
+        );
+        assert_eq!(
+            I64Vec4::new(1, 2, 3, 4),
+            Vec4::new(1.0, 2.0, 3.0, 4.0).as_i64vec4()
+        );
+        assert_eq!(
+            U64Vec4::new(1, 2, 3, 4),
+            Vec4::new(1.0, 2.0, 3.0, 4.0).as_u64vec4()
         );
 
         assert_eq!(
@@ -1231,6 +1259,14 @@ mod vec4 {
             Vec4::new(-1.0, -2.0, -3.0, -4.0),
             DVec4::new(-1.0, -2.0, -3.0, -4.0).as_vec4()
         );
+        assert_eq!(
+            I64Vec4::new(1, 2, 3, 4),
+            DVec4::new(1.0, 2.0, 3.0, 4.0).as_i64vec4()
+        );
+        assert_eq!(
+            U64Vec4::new(1, 2, 3, 4),
+            DVec4::new(1.0, 2.0, 3.0, 4.0).as_u64vec4()
+        );
 
         assert_eq!(
             DVec4::new(-1.0, -2.0, -3.0, -4.0),
@@ -1240,6 +1276,14 @@ mod vec4 {
         assert_eq!(
             Vec4::new(-1.0, -2.0, -3.0, -4.0),
             IVec4::new(-1, -2, -3, -4).as_vec4()
+        );
+        assert_eq!(
+            I64Vec4::new(1, 2, 3, 4),
+            IVec4::new(1, 2, 3, 4).as_i64vec4()
+        );
+        assert_eq!(
+            U64Vec4::new(1, 2, 3, 4),
+            IVec4::new(1, 2, 3, 4).as_u64vec4()
         );
 
         assert_eq!(
@@ -1251,6 +1295,44 @@ mod vec4 {
             Vec4::new(1.0, 2.0, 3.0, 4.0),
             UVec4::new(1, 2, 3, 4).as_vec4()
         );
+        assert_eq!(
+            I64Vec4::new(1, 2, 3, 4),
+            UVec4::new(1, 2, 3, 4).as_i64vec4()
+        );
+        assert_eq!(
+            U64Vec4::new(1, 2, 3, 4),
+            UVec4::new(1, 2, 3, 4).as_u64vec4()
+        );
+
+        assert_eq!(
+            DVec4::new(-1.0, -2.0, -3.0, -4.0),
+            I64Vec4::new(-1, -2, -3, -4).as_dvec4()
+        );
+        assert_eq!(UVec4::new(1, 2, 3, 4), I64Vec4::new(1, 2, 3, 4).as_uvec4());
+        assert_eq!(
+            Vec4::new(-1.0, -2.0, -3.0, -4.0),
+            I64Vec4::new(-1, -2, -3, -4).as_vec4()
+        );
+        assert_eq!(IVec4::new(1, 2, 3, 4), I64Vec4::new(1, 2, 3, 4).as_ivec4());
+        assert_eq!(
+            U64Vec4::new(1, 2, 3, 4),
+            I64Vec4::new(1, 2, 3, 4).as_u64vec4()
+        );
+
+        assert_eq!(
+            DVec4::new(1.0, 2.0, 3.0, 4.0),
+            U64Vec4::new(1, 2, 3, 4).as_dvec4()
+        );
+        assert_eq!(IVec4::new(1, 2, 3, 4), U64Vec4::new(1, 2, 3, 4).as_ivec4());
+        assert_eq!(
+            Vec4::new(1.0, 2.0, 3.0, 4.0),
+            U64Vec4::new(1, 2, 3, 4).as_vec4()
+        );
+        assert_eq!(
+            I64Vec4::new(1, 2, 3, 4),
+            U64Vec4::new(1, 2, 3, 4).as_i64vec4()
+        );
+        assert_eq!(UVec4::new(1, 2, 3, 4), U64Vec4::new(1, 2, 3, 4).as_uvec4());
     });
 
     glam_test!(test_vec3a, {
@@ -1341,4 +1423,52 @@ mod uvec4 {
 
     impl_vec4_scalar_bit_op_tests!(UVec4, 0, 2);
     impl_vec4_bit_op_tests!(UVec4, 0, 2);
+}
+
+mod i64vec4 {
+    use glam::{i64vec4, BVec4, I64Vec2, I64Vec3, I64Vec4, IVec4, UVec4};
+
+    glam_test!(test_align, {
+        use std::mem;
+        assert_eq!(32, mem::size_of::<I64Vec4>());
+        #[cfg(not(feature = "cuda"))]
+        assert_eq!(8, mem::align_of::<I64Vec4>());
+        #[cfg(feature = "cuda")]
+        assert_eq!(16, mem::align_of::<I64Vec4>());
+        assert_eq!(4, mem::size_of::<BVec4>());
+        assert_eq!(1, mem::align_of::<BVec4>());
+    });
+
+    impl_vec4_signed_tests!(i64, i64vec4, I64Vec4, I64Vec3, I64Vec2, BVec4);
+    impl_vec4_eq_hash_tests!(i64, i64vec4);
+
+    impl_vec4_scalar_shift_op_tests!(I64Vec4, -2, 2);
+    impl_vec4_shift_op_tests!(I64Vec4);
+
+    impl_vec4_scalar_bit_op_tests!(I64Vec4, -2, 2);
+    impl_vec4_bit_op_tests!(I64Vec4, -2, 2);
+}
+
+mod u64vec4 {
+    use glam::{u64vec4, BVec4, IVec4, U64Vec2, U64Vec3, U64Vec4, UVec4};
+
+    glam_test!(test_align, {
+        use std::mem;
+        assert_eq!(32, mem::size_of::<U64Vec4>());
+        #[cfg(not(feature = "cuda"))]
+        assert_eq!(8, mem::align_of::<U64Vec4>());
+        #[cfg(feature = "cuda")]
+        assert_eq!(16, mem::align_of::<U64Vec4>());
+        assert_eq!(4, mem::size_of::<BVec4>());
+        assert_eq!(1, mem::align_of::<BVec4>());
+    });
+
+    impl_vec4_tests!(u64, u64vec4, U64Vec4, U64Vec3, U64Vec2, BVec4);
+    impl_vec4_eq_hash_tests!(u64, u64vec4);
+
+    impl_vec4_scalar_shift_op_tests!(U64Vec4, 0, 2);
+    impl_vec4_shift_op_tests!(U64Vec4);
+
+    impl_vec4_scalar_bit_op_tests!(U64Vec4, 0, 2);
+    impl_vec4_bit_op_tests!(U64Vec4, 0, 2);
 }

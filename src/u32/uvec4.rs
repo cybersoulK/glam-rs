@@ -284,6 +284,13 @@ impl UVec4 {
         )
     }
 
+    /// Computes the squared length of `self`.
+    #[doc(alias = "magnitude2")]
+    #[inline]
+    pub fn length_squared(self) -> u32 {
+        self.dot(self)
+    }
+
     /// Casts all elements of `self` to `f32`.
     #[inline]
     pub fn as_vec4(&self) -> crate::Vec4 {
@@ -300,6 +307,18 @@ impl UVec4 {
     #[inline]
     pub fn as_ivec4(&self) -> crate::IVec4 {
         crate::IVec4::new(self.x as i32, self.y as i32, self.z as i32, self.w as i32)
+    }
+
+    /// Casts all elements of `self` to `i64`.
+    #[inline]
+    pub fn as_i64vec4(&self) -> crate::I64Vec4 {
+        crate::I64Vec4::new(self.x as i64, self.y as i64, self.z as i64, self.w as i64)
+    }
+
+    /// Casts all elements of `self` to `u64`.
+    #[inline]
+    pub fn as_u64vec4(&self) -> crate::U64Vec4 {
+        crate::U64Vec4::new(self.x as u64, self.y as u64, self.z as u64, self.w as u64)
     }
 }
 
@@ -830,6 +849,32 @@ impl Shr<i32> for UVec4 {
     }
 }
 
+impl Shl<i64> for UVec4 {
+    type Output = Self;
+    #[inline]
+    fn shl(self, rhs: i64) -> Self::Output {
+        Self {
+            x: self.x.shl(rhs),
+            y: self.y.shl(rhs),
+            z: self.z.shl(rhs),
+            w: self.w.shl(rhs),
+        }
+    }
+}
+
+impl Shr<i64> for UVec4 {
+    type Output = Self;
+    #[inline]
+    fn shr(self, rhs: i64) -> Self::Output {
+        Self {
+            x: self.x.shr(rhs),
+            y: self.y.shr(rhs),
+            z: self.z.shr(rhs),
+            w: self.w.shr(rhs),
+        }
+    }
+}
+
 impl Shl<u8> for UVec4 {
     type Output = Self;
     #[inline]
@@ -899,6 +944,32 @@ impl Shr<u32> for UVec4 {
     type Output = Self;
     #[inline]
     fn shr(self, rhs: u32) -> Self::Output {
+        Self {
+            x: self.x.shr(rhs),
+            y: self.y.shr(rhs),
+            z: self.z.shr(rhs),
+            w: self.w.shr(rhs),
+        }
+    }
+}
+
+impl Shl<u64> for UVec4 {
+    type Output = Self;
+    #[inline]
+    fn shl(self, rhs: u64) -> Self::Output {
+        Self {
+            x: self.x.shl(rhs),
+            y: self.y.shl(rhs),
+            z: self.z.shl(rhs),
+            w: self.w.shl(rhs),
+        }
+    }
+}
+
+impl Shr<u64> for UVec4 {
+    type Output = Self;
+    #[inline]
+    fn shr(self, rhs: u64) -> Self::Output {
         Self {
             x: self.x.shr(rhs),
             y: self.y.shr(rhs),

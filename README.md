@@ -27,6 +27,10 @@ and feel of the API has solidified.
   * vectors: `IVec2`, `IVec3` and `IVec4`
 * `u32` types
   * vectors: `UVec2`, `UVec3` and `UVec4`
+* `i64` types
+  * vectors: `I64Vec2`, `I64Vec3` and `I64Vec4`
+* `u64` types
+  * vectors: `U64Vec2`, `U64Vec3` and `U64Vec4`
 * `bool` types
   * vectors: `BVec2`, `BVec3` and `BVec4`
 
@@ -70,7 +74,7 @@ defined in `std`. For example:
 
 ```toml
 [dependencies]
-glam = { version = "0.22", default-features = false, features = ["libm"] }
+glam = { version = "0.23", default-features = false, features = ["libm"] }
 ```
 
 To support both `std` and `no_std` builds in project, you can use the following
@@ -84,7 +88,7 @@ std = ["glam/std"]
 libm = ["glam/libm"]
 
 [dependencies]
-glam = { version = "0.22", default-features = false }
+glam = { version = "0.23", default-features = false }
 ```
 
 ### Optional features

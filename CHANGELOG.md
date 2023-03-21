@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog], and this project adheres to
 [Semantic Versioning].
 
+## [Unreleased]
+
+### Added
+
+* Added `i64` and `u64` vector types; `I64Vec2`, `I64Vec3`, `I64Vec4`,
+  `U64Vec2`, `U64Vec3` and `U64Vec4`.
+
+* Added `length_squared` method on signed and unsigned integer vector types.
+
+* Added `distance_squared` method on signed integer vector types.
+
+### Changed
+
+* Changed quaternion `to_axis_angle` for improved numerical stability.
+
+### Removed
+
+* Removed dependency on `serde_derive` for improved compile times when using
+  `serde`.
+
+## [0.23.0] - 2023-02-22
+
+### Breaking changes
+
+* When the `scalar-math` feature is enabled the vector mask type for `Vec3A` was
+  changed from `BVec3` to `BVec3A`.
+
+### Added
+
+* Added `copysign` method to signed vector types.
+
 ## [0.22.0] - 2022-10-24
 
 ### Breaking changes
@@ -889,7 +920,8 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 [Keep a Changelog]: https://keepachangelog.com/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
-[Unreleased]: https://github.com/bitshifter/glam-rs/compare/0.22.0...HEAD
+[Unreleased]: https://github.com/bitshifter/glam-rs/compare/0.23.0...HEAD
+[0.23.0]: https://github.com/bitshifter/glam-rs/compare/0.22.0...0.23.0
 [0.22.0]: https://github.com/bitshifter/glam-rs/compare/0.21.3...0.22.0
 [0.21.3]: https://github.com/bitshifter/glam-rs/compare/0.21.2...0.21.3
 [0.21.2]: https://github.com/bitshifter/glam-rs/compare/0.21.1...0.21.2
