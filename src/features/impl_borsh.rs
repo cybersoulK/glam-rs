@@ -18,6 +18,7 @@ macro_rules! impl_borsh {
     ($type:ident, $array_type:ty) => {
         
         impl borsh::BorshSerialize for $type {
+            #[inline]
             fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
 
                 let arr = self.to_array();
@@ -28,9 +29,10 @@ macro_rules! impl_borsh {
         }
 
         impl borsh::BorshDeserialize for $type {
-            fn deserialize(buf: &mut &[u8]) -> std::io::Result<Self> {
+            #[inline]
+            fn deserialize_reader<R: borsh::maybestd::io::Read>(reader: &mut R) -> std::io::Result<Self> {
 
-                let arr = <$array_type>::deserialize(buf)?;
+                let arr = <$array_type>::deserialize_reader(reader)?;
                 let glam = Self::from_array(arr);
 
                 Ok(glam)
