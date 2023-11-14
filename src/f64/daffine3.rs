@@ -1,7 +1,7 @@
 // Generated from affine.rs.tera template. Edit the template, not the generated file.
 
 use crate::{DMat3, DMat4, DQuat, DVec3};
-use core::ops::{Deref, DerefMut, Mul};
+use core::ops::{Deref, DerefMut, Mul, MulAssign};
 
 /// A 3D affine transform, which can represent translation, rotation, scaling and shear.
 #[derive(Copy, Clone)]
@@ -264,15 +264,12 @@ impl DAffine3 {
     /// vector contains any zero elements when `glam_assert` is enabled.
     #[inline]
     pub fn to_scale_rotation_translation(&self) -> (DVec3, DQuat, DVec3) {
-        #[cfg(feature = "libm")]
-        #[allow(unused_imports)]
-        use num_traits::Float;
-
+        use crate::f64::math;
         let det = self.matrix3.determinant();
         glam_assert!(det != 0.0);
 
         let scale = DVec3::new(
-            self.matrix3.x_axis.length() * det.signum(),
+            self.matrix3.x_axis.length() * math::signum(det),
             self.matrix3.y_axis.length(),
             self.matrix3.z_axis.length(),
         );
@@ -361,7 +358,7 @@ impl DAffine3 {
     /// Transforms the given 3D vector, applying shear, scale and rotation (but NOT
     /// translation).
     ///
-    /// To also apply translation, use [`Self::transform_point3`] instead.
+    /// To also apply translation, use [`Self::transform_point3()`] instead.
     #[inline]
     pub fn transform_vector3(&self, rhs: DVec3) -> DVec3 {
         #[allow(clippy::useless_conversion)]
@@ -486,6 +483,13 @@ impl Mul for DAffine3 {
             matrix3: self.matrix3 * rhs.matrix3,
             translation: self.matrix3 * rhs.translation + self.translation,
         }
+    }
+}
+
+impl MulAssign for DAffine3 {
+    #[inline]
+    fn mul_assign(&mut self, rhs: DAffine3) {
+        *self = self.mul(rhs);
     }
 }
 

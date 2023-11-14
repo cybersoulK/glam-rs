@@ -1,6 +1,6 @@
 // Generated from vec.rs.tera template. Edit the template, not the generated file.
 
-use crate::{BVec2, U64Vec3};
+use crate::{BVec2, I64Vec2, U64Vec3, UVec2};
 
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
@@ -31,10 +31,16 @@ impl U64Vec2 {
     /// All ones.
     pub const ONE: Self = Self::splat(1);
 
-    /// A unit-length vector pointing along the positive X axis.
+    /// All `u64::MIN`.
+    pub const MIN: Self = Self::splat(u64::MIN);
+
+    /// All `u64::MAX`.
+    pub const MAX: Self = Self::splat(u64::MAX);
+
+    /// A unit vector pointing along the positive X axis.
     pub const X: Self = Self::new(1, 0);
 
-    /// A unit-length vector pointing along the positive Y axis.
+    /// A unit vector pointing along the positive Y axis.
     pub const Y: Self = Self::new(0, 1);
 
     /// The unit axes.
@@ -262,6 +268,102 @@ impl U64Vec2 {
     #[inline]
     pub fn as_i64vec2(&self) -> crate::I64Vec2 {
         crate::I64Vec2::new(self.x as i64, self.y as i64)
+    }
+
+    /// Returns a vector containing the wrapping addition of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.wrapping_add(rhs.x), self.y.wrapping_add(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn wrapping_add(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.wrapping_add(rhs.x),
+            y: self.y.wrapping_add(rhs.y),
+        }
+    }
+
+    /// Returns a vector containing the wrapping subtraction of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.wrapping_sub(rhs.x), self.y.wrapping_sub(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn wrapping_sub(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.wrapping_sub(rhs.x),
+            y: self.y.wrapping_sub(rhs.y),
+        }
+    }
+
+    /// Returns a vector containing the wrapping multiplication of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.wrapping_mul(rhs.x), self.y.wrapping_mul(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn wrapping_mul(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.wrapping_mul(rhs.x),
+            y: self.y.wrapping_mul(rhs.y),
+        }
+    }
+
+    /// Returns a vector containing the wrapping division of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.wrapping_div(rhs.x), self.y.wrapping_div(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn wrapping_div(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.wrapping_div(rhs.x),
+            y: self.y.wrapping_div(rhs.y),
+        }
+    }
+
+    /// Returns a vector containing the saturating addition of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.saturating_add(rhs.x), self.y.saturating_add(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn saturating_add(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.saturating_add(rhs.x),
+            y: self.y.saturating_add(rhs.y),
+        }
+    }
+
+    /// Returns a vector containing the saturating subtraction of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.saturating_sub(rhs.x), self.y.saturating_sub(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn saturating_sub(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.saturating_sub(rhs.x),
+            y: self.y.saturating_sub(rhs.y),
+        }
+    }
+
+    /// Returns a vector containing the saturating multiplication of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.saturating_mul(rhs.x), self.y.saturating_mul(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn saturating_mul(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.saturating_mul(rhs.x),
+            y: self.y.saturating_mul(rhs.y),
+        }
+    }
+
+    /// Returns a vector containing the saturating division of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.saturating_div(rhs.x), self.y.saturating_div(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn saturating_div(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.saturating_div(rhs.x),
+            y: self.y.saturating_div(rhs.y),
+        }
     }
 }
 
@@ -935,5 +1037,21 @@ impl From<U64Vec2> for (u64, u64) {
     #[inline]
     fn from(v: U64Vec2) -> Self {
         (v.x, v.y)
+    }
+}
+
+impl From<UVec2> for U64Vec2 {
+    #[inline]
+    fn from(v: UVec2) -> Self {
+        Self::new(u64::from(v.x), u64::from(v.y))
+    }
+}
+
+impl TryFrom<I64Vec2> for U64Vec2 {
+    type Error = core::num::TryFromIntError;
+
+    #[inline]
+    fn try_from(v: I64Vec2) -> Result<Self, Self::Error> {
+        Ok(Self::new(u64::try_from(v.x)?, u64::try_from(v.y)?))
     }
 }

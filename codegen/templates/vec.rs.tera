@@ -35,6 +35,7 @@
         {% set vec2_t = "DVec2" %}
         {% set vec3_t = "DVec3" %}
         {% set vec4_t = "DVec4" %}
+        {% set from_types = ["Vec" ~ dim, "IVec" ~ dim, "UVec" ~ dim] %}
     {% endif %}
 {% elif scalar_t == "i32" %}
     {% set is_signed = true %}
@@ -43,6 +44,7 @@
     {% set vec2_t = "IVec2" %}
     {% set vec3_t = "IVec3" %}
     {% set vec4_t = "IVec4" %}
+    {% set try_from_types = ["UVec" ~ dim, "U64Vec" ~ dim, "I64Vec" ~ dim] %}
 {% elif scalar_t == "u32" %}
     {% set is_signed = false %}
     {% set is_float = false %}
@@ -50,6 +52,7 @@
     {% set vec2_t = "UVec2" %}
     {% set vec3_t = "UVec3" %}
     {% set vec4_t = "UVec4" %}
+    {% set try_from_types = ["IVec" ~ dim, "I64Vec" ~ dim, "U64Vec" ~ dim] %}
 {% elif scalar_t == "i64" %}
     {% set is_signed = true %}
     {% set is_float = false %}
@@ -57,13 +60,17 @@
     {% set vec2_t = "I64Vec2" %}
     {% set vec3_t = "I64Vec3" %}
     {% set vec4_t = "I64Vec4" %}
-{% else %}
+    {% set from_types = ["IVec" ~ dim] %}
+    {% set try_from_types = ["U64Vec" ~ dim] %}
+{% elif scalar_t == "u64" %}
     {% set is_signed = false %}
     {% set is_float = false %}
     {% set self_t = "U64Vec" ~ dim %}
     {% set vec2_t = "U64Vec2" %}
     {% set vec3_t = "U64Vec3" %}
     {% set vec4_t = "U64Vec4" %}
+    {% set from_types = ["UVec" ~ dim] %}
+    {% set try_from_types = ["I64Vec" ~ dim] %}
 {% endif %}
 
 {% if scalar_t == "f64" or scalar_t == "i64" or scalar_t == "u64" or dim == 4 %}
@@ -104,6 +111,19 @@ use crate::{
     {% elif is_coresimd %}
         coresimd::*,
     {% endif %}
+    {% if is_float %}
+        {{ scalar_t }}::math,
+    {% endif %}
+    {% if from_types %}
+        {% for ty in from_types %}
+            {{ ty }},
+        {% endfor %}
+    {% endif %}
+    {% if try_from_types %}
+        {% for ty in try_from_types %}
+            {{ ty }},
+        {% endfor %}
+    {% endif %}
 };
 
 #[cfg(not(target_arch = "spirv"))]
@@ -123,13 +143,8 @@ use core::simd::*;
 use std::simd::StdFloat;
 {% endif %}
 
-{% if is_float %}
-#[cfg(feature = "libm")]
-#[allow(unused_imports)]
-use num_traits::Float;
-{% endif %}
-
 {% if is_sse2 or is_wasm32 %}
+#[repr(C)]
 union UnionCast {
     a: [f32; 4],
     v: {{ self_t }}
@@ -150,10 +165,10 @@ pub const fn {{ self_t | lower }}(
 {%- if self_t == "Vec3A" %}
 ///
 /// SIMD vector types are used for storage on supported platforms for better
-/// performance than the `Vec3` type.
+/// performance than the [`Vec3`] type.
 ///
-/// It is possible to convert between `Vec3` and `Vec3A` types using `From`
-/// trait implementations.
+/// It is possible to convert between [`Vec3`] and [`Vec3A`] types using [`From`]
+/// or [`Into`] trait implementations.
 ///
 /// This type is 16 byte aligned.
 {%- elif self_t == "Vec4" and is_simd %}
@@ -213,14 +228,26 @@ impl {{ self_t }} {
     pub const NEG_ONE: Self = Self::splat(-{{ one }});
 {% endif %}
 
+    /// All `{{ scalar_t }}::MIN`.
+    pub const MIN: Self = Self::splat({{ scalar_t }}::MIN);
+
+    /// All `{{ scalar_t }}::MAX`.
+    pub const MAX: Self = Self::splat({{ scalar_t }}::MAX);
+
 {% if is_float %}
-    /// All NAN.
+    /// All `{{ scalar_t }}::NAN`.
     pub const NAN: Self = Self::splat({{ scalar_t }}::NAN);
+
+    /// All `{{ scalar_t }}::INFINITY`.
+    pub const INFINITY: Self = Self::splat({{ scalar_t }}::INFINITY);
+
+    /// All `{{ scalar_t }}::NEG_INFINITY`.
+    pub const NEG_INFINITY: Self = Self::splat({{ scalar_t }}::NEG_INFINITY);
 {% endif %}
 
 {% for i in range(end = dim) %}
     {% set C = components[i] | upper %}
-    /// A unit-length vector pointing along the positive {{ C }} axis.
+    /// A unit vector pointing along the positive {{ C }} axis.
     pub const {{ C }}: Self = Self::new(
         {% for j in range(end = dim) %}
             {% if i == j %} {{ one }} {% else %} {{ zero }} {% endif %},
@@ -231,7 +258,7 @@ impl {{ self_t }} {
 {% if is_signed %}
     {% for i in range(end = dim) %}
         {% set C = components[i] | upper %}
-        /// A unit-length vector pointing along the negative {{ C }} axis.
+        /// A unit vector pointing along the negative {{ C }} axis.
         pub const NEG_{{ C }}: Self = Self::new(
             {% for j in range(end = dim) %}
                 {% if i == j %} {{ neg_one }} {% else %} {{ zero }} {% endif %},
@@ -415,19 +442,19 @@ impl {{ self_t }} {
 
     /// Creates a 2D vector from the `x` and `y` elements of `self`, discarding `z`.
     ///
-    /// Truncation may also be performed by using `self.xy()` or `{{ vec2_t }}::from()`.
+    /// Truncation may also be performed by using [`self.xy()`][crate::swizzles::Vec3Swizzles::xy()].
     #[inline]
     pub fn truncate(self) -> {{ vec2_t }} {
         use crate::swizzles::Vec3Swizzles;
         self.xy()
     }
 {% elif dim == 4 %}
-    /// Creates a 2D vector from the `x`, `y` and `z` elements of `self`, discarding `w`.
+    /// Creates a 3D vector from the `x`, `y` and `z` elements of `self`, discarding `w`.
     ///
-    /// Truncation to `{{ vec3_t }}` may also be performed by using `self.xyz()` or `{{ vec3_t }}::from()`.
+    /// Truncation to [`{{ vec3_t }}`] may also be performed by using [`self.xyz()`][crate::swizzles::Vec4Swizzles::xyz()].
 {%- if scalar_t == "f32" %}
     ///
-    /// To truncate to `Vec3A` use `Vec3A::from()`.
+    /// To truncate to [`Vec3A`] use [`Vec3A::from()`].
 {%- endif %}
     #[inline]
     pub fn truncate(self) -> {{ vec3_t }} {
@@ -458,7 +485,7 @@ impl {{ self_t }} {
         {% elif is_wasm32 %}
             Self(unsafe { dot{{ dim }}_into_v128(self.0, rhs.0) })
         {% elif is_coresimd %}
-            Self(unsafe { dot{{ dim }}_into_f32x4(self.0, rhs.0) })
+            Self(dot{{ dim }}_into_f32x4(self.0, rhs.0))
         {% else %}
             Self::splat(self.dot(rhs))
         {% endif %}
@@ -804,7 +831,11 @@ impl {{ self_t }} {
         {% if is_scalar %}
             Self {
                 {% for c in components %}
-                    {{ c }}: self.{{ c }}.abs(),
+                    {%- if is_float %}
+                        {{ c }}: math::abs(self.{{ c }}),
+                    {%- else %}
+                        {{ c }}: self.{{ c }}.abs(),
+                    {%- endif %}
                 {%- endfor %}
             }
         {% elif is_sse2 %}
@@ -832,7 +863,11 @@ impl {{ self_t }} {
         {% if is_scalar %}
             Self {
                 {% for c in components %}
-                    {{ c }}: self.{{ c }}.signum(),
+                    {%- if is_float %}
+                        {{ c }}: math::signum(self.{{ c }}),
+                    {%- else %}
+                        {{ c }}: self.{{ c }}.signum(),
+                    {%- endif %}
                 {%- endfor %}
             }
         {% elif is_coresimd %}
@@ -852,17 +887,16 @@ impl {{ self_t }} {
         {% endif %}
     }
 
+    {% if is_float %}
     /// Returns a vector with signs of `rhs` and the magnitudes of `self`.
     #[inline]
     pub fn copysign(self, rhs: Self) -> Self {
-        {% if is_scalar and is_float %}
+        {% if is_scalar %}
             Self {
                 {% for c in components %}
-                    {{ c }}: self.{{ c }}.copysign(rhs.{{ c }}),
+                    {{ c }}: math::copysign(self.{{ c }}, rhs.{{ c }}),
                 {%- endfor %}
             }
-        {% elif is_scalar %}
-            Self::select(rhs.cmpge(Self::ZERO), self, -self)
         {% elif is_coresimd %}
             Self(self.0.copysign(rhs.0))
         {% elif is_sse2 %}
@@ -877,6 +911,7 @@ impl {{ self_t }} {
             }
         {% endif %}
     }
+    {% endif %}
 
     /// Returns a bitmask with the lowest {{ dim }} bits set to the sign bits from the elements of `self`.
     ///
@@ -977,7 +1012,7 @@ impl {{ self_t }} {
     #[inline]
     pub fn length(self) -> {{ scalar_t }} {
         {% if is_scalar %}
-            self.dot(self).sqrt()
+            math::sqrt(self.dot(self))
         {% elif is_sse2 %}
             unsafe {
                 let dot = dot{{ dim }}_in_x(self.0, self.0);
@@ -1039,6 +1074,46 @@ impl {{ self_t }} {
     pub fn distance_squared(self, rhs: Self) -> {{ scalar_t }} {
         (self - rhs).length_squared()
     }
+
+    /// Returns the element-wise quotient of [Euclidean division] of `self` by `rhs`.
+    {%- if not is_float%}
+    ///
+    /// # Panics
+    /// This function will panic if any `rhs` element is 0 or the division results in overflow.
+    {%- endif %}
+    #[inline]
+    pub fn div_euclid(self, rhs: Self) -> Self {
+        Self::new(
+            {% for c in components %}
+                {% if is_float %}
+                math::div_euclid(self.{{ c }}, rhs.{{ c }}),
+                {% else %}
+                self.{{ c }}.div_euclid(rhs.{{ c }}),
+                {% endif %}
+            {%- endfor %}
+        )
+    }
+
+    /// Returns the element-wise remainder of [Euclidean division] of `self` by `rhs`.
+    {%- if not is_float %}
+    ///
+    /// # Panics
+    /// This function will panic if any `rhs` element is 0 or the division results in overflow.
+    {%- endif %}
+    ///
+    /// [Euclidean division]: {{scalar_t}}::rem_euclid
+    #[inline]
+    pub fn rem_euclid(self, rhs: Self) -> Self {
+        Self::new(
+            {% for c in components %}
+                {% if is_float %}
+                math::rem_euclid(self.{{ c }}, rhs.{{ c }}),
+                {% else %}
+                self.{{ c }}.rem_euclid(rhs.{{ c }}),
+                {% endif %}
+            {%- endfor %}
+        )
+    }
 {% endif %}
 
 {% if is_float %}
@@ -1046,7 +1121,7 @@ impl {{ self_t }} {
     ///
     /// For valid results, `self` must _not_ be of length zero, nor very close to zero.
     ///
-    /// See also [`Self::try_normalize`] and [`Self::normalize_or_zero`].
+    /// See also [`Self::try_normalize()`] and [`Self::normalize_or_zero()`].
     ///
     /// Panics
     ///
@@ -1087,7 +1162,7 @@ impl {{ self_t }} {
     /// In particular, if the input is zero (or very close to zero), or non-finite,
     /// the result of this operation will be `None`.
     ///
-    /// See also [`Self::normalize_or_zero`].
+    /// See also [`Self::normalize_or_zero()`].
     #[must_use]
     #[inline]
     pub fn try_normalize(self) -> Option<Self> {
@@ -1104,7 +1179,7 @@ impl {{ self_t }} {
     /// In particular, if the input is zero (or very close to zero), or non-finite,
     /// the result of this operation will be zero.
     ///
-    /// See also [`Self::try_normalize`].
+    /// See also [`Self::try_normalize()`].
     #[must_use]
     #[inline]
     pub fn normalize_or_zero(self) -> Self {
@@ -1122,7 +1197,7 @@ impl {{ self_t }} {
     #[inline]
     pub fn is_normalized(self) -> bool {
         // TODO: do something with epsilon
-        (self.length_squared() - 1.0).abs() <= 1e-4
+        math::abs(self.length_squared() - 1.0) <= 1e-4
     }
 
     /// Returns the vector projection of `self` onto `rhs`.
@@ -1193,7 +1268,7 @@ impl {{ self_t }} {
         {% if is_scalar %}
             Self {
                 {% for c in components %}
-                    {{ c }}: self.{{ c }}.round(),
+                    {{ c }}: math::round(self.{{ c }}),
                 {%- endfor %}
             }
         {% elif is_sse2 %}
@@ -1212,7 +1287,7 @@ impl {{ self_t }} {
         {% if is_scalar %}
             Self {
                 {% for c in components %}
-                    {{ c }}: self.{{ c }}.floor(),
+                    {{ c }}: math::floor(self.{{ c }}),
                 {%- endfor %}
             }
         {% elif is_sse2 %}
@@ -1231,7 +1306,7 @@ impl {{ self_t }} {
         {% if is_scalar %}
             Self {
                 {% for c in components %}
-                    {{ c }}: self.{{ c }}.ceil(),
+                    {{ c }}: math::ceil(self.{{ c }}),
                 {%- endfor %}
             }
         {% elif is_sse2 %}
@@ -1240,6 +1315,25 @@ impl {{ self_t }} {
             Self(f32x4_ceil(self.0))
         {% elif is_coresimd %}
             Self(self.0.ceil())
+        {% endif %}
+    }
+
+    /// Returns a vector containing the integer part each element of `self`. This means numbers are
+    /// always truncated towards zero.
+    #[inline]
+    pub fn trunc(self) -> Self {
+        {% if is_scalar %}
+            Self {
+                {% for c in components %}
+                    {{ c }}: math::trunc(self.{{ c }}),
+                {%- endfor %}
+            }
+        {% elif is_sse2 %}
+            Self(unsafe { m128_trunc(self.0) })
+        {% elif is_wasm32 %}
+            Self(f32x4_trunc(self.0))
+        {% elif is_coresimd %}
+            Self(self.0.trunc())
         {% endif %}
     }
 
@@ -1258,7 +1352,7 @@ impl {{ self_t }} {
     pub fn exp(self) -> Self {
         Self::new(
             {% for c in components %}
-                self.{{ c }}.exp(),
+                math::exp(self.{{ c }}),
             {%- endfor %}
         )
     }
@@ -1268,7 +1362,7 @@ impl {{ self_t }} {
     pub fn powf(self, n: {{ scalar_t }}) -> Self {
         Self::new(
             {% for c in components %}
-                self.{{ c }}.powf(n),
+                math::powf(self.{{ c }}, n),
             {%- endfor %}
         )
     }
@@ -1279,7 +1373,7 @@ impl {{ self_t }} {
         {% if is_scalar %}
             Self {
                 {% for c in components %}
-                    {{ c }}: self.{{ c }}.recip(),
+                    {{ c }}: 1.0 / self.{{ c }},
                 {%- endfor %}
             }
         {% elif is_sse2 %}
@@ -1326,9 +1420,9 @@ impl {{ self_t }} {
         glam_assert!(min <= max);
         let length_sq = self.length_squared();
         if length_sq < min * min {
-            self * (length_sq.sqrt().recip() * min)
+            min * (self / math::sqrt(length_sq))
         } else if length_sq > max * max {
-            self * (length_sq.sqrt().recip() * max)
+            max * (self / math::sqrt(length_sq))
         } else {
             self
         }
@@ -1338,7 +1432,7 @@ impl {{ self_t }} {
     pub fn clamp_length_max(self, max: {{ scalar_t }}) -> Self {
         let length_sq = self.length_squared();
         if length_sq > max * max {
-            self * (length_sq.sqrt().recip() * max)
+            max * (self / math::sqrt(length_sq))
         } else {
             self
         }
@@ -1348,7 +1442,7 @@ impl {{ self_t }} {
     pub fn clamp_length_min(self, min: {{ scalar_t }}) -> Self {
         let length_sq = self.length_squared();
         if length_sq < min * min {
-            self * (length_sq.sqrt().recip() * min)
+            min * (self / math::sqrt(length_sq))
         } else {
             self
         }
@@ -1373,7 +1467,7 @@ impl {{ self_t }} {
         {% else %}
             Self::new(
                 {% for c in components %}
-                    self.{{ c }}.mul_add(a.{{ c }}, b.{{ c }}),
+                    math::mul_add(self.{{ c }}, a.{{ c }}, b.{{ c }}),
                 {%- endfor %}
             )
         {% endif %}
@@ -1381,58 +1475,66 @@ impl {{ self_t }} {
 
 {% if dim == 2 %}
     /// Creates a 2D vector containing `[angle.cos(), angle.sin()]`. This can be used in
-    /// conjunction with the `rotate` method, e.g. `Vec2::from_angle(PI).rotate(Vec2::Y)` will
-    /// create the vector [-1, 0] and rotate `Vec2::Y` around it returning `-Vec2::Y`.
+    /// conjunction with the [`rotate()`][Self::rotate()] method, e.g.
+    /// `{{ vec2_t }}::from_angle(PI).rotate({{ vec2_t }}::Y)` will create the vector `[-1, 0]`
+    /// and rotate [`{{ vec2_t }}::Y`] around it returning `-{{ vec2_t }}::Y`.
     #[inline]
     pub fn from_angle(angle: {{ scalar_t }}) -> Self {
-        let (sin, cos) = angle.sin_cos();
+        let (sin, cos) = math::sin_cos(angle);
         Self {
             x: cos,
             y: sin,
         }
     }
 
-    /// Returns the angle (in radians) between `self` and `rhs`.
+    /// Returns the angle (in radians) of this vector in the range `[-π, +π]`.
     ///
-    /// The input vectors do not need to be unit length however they must be non-zero.
+    /// The input does not need to be a unit vector however it must be non-zero.
+    #[inline]
+    pub fn to_angle(self) -> {{ scalar_t }} {
+        math::atan2(self.y, self.x)
+    }
+
+    /// Returns the angle (in radians) between `self` and `rhs` in the range `[-π, +π]`.
+    ///
+    /// The inputs do not need to be unit vectors however they must be non-zero.
     #[inline]
     pub fn angle_between(self, rhs: Self) -> {{ scalar_t }} {
-        use crate::FloatEx;
-        let angle = (self.dot(rhs) / (self.length_squared() * rhs.length_squared()).sqrt())
-            .acos_approx();
+        let angle = math::acos_approx(
+            self.dot(rhs) / math::sqrt(self.length_squared() * rhs.length_squared()));
 
-        angle * self.perp_dot(rhs).signum()
+        angle * math::signum(self.perp_dot(rhs))
     }
 {% elif dim == 3 %}
     /// Returns the angle (in radians) between two vectors.
     ///
-    /// The input vectors do not need to be unit length however they must be non-zero.
+    /// The inputs do not need to be unit vectors however they must be non-zero.
     #[inline]
     pub fn angle_between(self, rhs: Self) -> {{ scalar_t }} {
-        use crate::FloatEx;
-        self.dot(rhs)
-            .div(self.length_squared().mul(rhs.length_squared()).sqrt())
-            .acos_approx()
+        math::acos_approx(
+            self.dot(rhs).div(
+                math::sqrt(self.length_squared().mul(rhs.length_squared()))))
     }
 
     /// Returns some vector that is orthogonal to the given one.
     ///
     /// The input vector must be finite and non-zero.
     ///
-    /// The output vector is not necessarily unit-length.
-    /// For that use [`Self::any_orthonormal_vector`] instead.
+    /// The output vector is not necessarily unit length. For that use
+    /// [`Self::any_orthonormal_vector()`] instead.
     #[inline]
     pub fn any_orthogonal_vector(&self) -> Self {
         // This can probably be optimized
-        if self.x.abs() > self.y.abs() {
+        if math::abs(self.x) > math::abs(self.y) {
             Self::new(-self.z, 0.0, self.x) // self.cross(Self::Y)
         } else {
             Self::new(0.0, self.z, -self.y) // self.cross(Self::X)
         }
     }
 
-    /// Returns any unit-length vector that is orthogonal to the given one.
-    /// The input vector must be finite and non-zero.
+    /// Returns any unit vector that is orthogonal to the given one.
+    ///
+    /// The input vector must be unit length.
     ///
     /// # Panics
     ///
@@ -1441,17 +1543,14 @@ impl {{ self_t }} {
     pub fn any_orthonormal_vector(&self) -> Self {
         glam_assert!(self.is_normalized());
         // From https://graphics.pixar.com/library/OrthonormalB/paper.pdf
-        #[cfg(feature = "std")]
-        let sign = (1.0_{{ scalar_t }}).copysign(self.z);
-        #[cfg(not(feature = "std"))]
-        let sign = self.z.signum();
+        let sign = math::signum(self.z);
         let a = -1.0 / (sign + self.z);
         let b = self.x * self.y * a;
         Self::new(b, sign + self.y * self.y * a, -self.y)
     }
 
-    /// Given a unit-length vector return two other vectors that together form an orthonormal
-    /// basis.  That is, all three vectors are orthogonal to each other and are normalized.
+    /// Given a unit vector return two other vectors that together form an orthonormal
+    /// basis. That is, all three vectors are orthogonal to each other and are normalized.
     ///
     /// # Panics
     ///
@@ -1460,10 +1559,7 @@ impl {{ self_t }} {
     pub fn any_orthonormal_pair(&self) -> (Self, Self) {
         glam_assert!(self.is_normalized());
         // From https://graphics.pixar.com/library/OrthonormalB/paper.pdf
-        #[cfg(feature = "std")]
-        let sign = (1.0_{{ scalar_t }}).copysign(self.z);
-        #[cfg(not(feature = "std"))]
-        let sign = self.z.signum();
+        let sign = math::signum(self.z);
         let a = -1.0 / (sign + self.z);
         let b = self.x * self.y * a;
         (
@@ -1638,6 +1734,112 @@ impl {{ self_t }} {
         crate::U64Vec4::new(self.x as u64, self.y as u64, self.z as u64, self.w as u64)
     }
     {% endif %}
+{% endif %}
+
+{% if not is_float %}
+    /// Returns a vector containing the wrapping addition of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.wrapping_add(rhs.x), self.y.wrapping_add(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn wrapping_add(self, rhs: Self) -> Self {
+        Self {
+            {% for c in components %}
+                {{ c }}: self.{{ c }}.wrapping_add(rhs.{{ c }}),
+            {%- endfor %}
+        }
+    }
+
+    /// Returns a vector containing the wrapping subtraction of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.wrapping_sub(rhs.x), self.y.wrapping_sub(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn wrapping_sub(self, rhs: Self) -> Self {
+        Self {
+            {% for c in components %}
+                {{ c }}: self.{{ c }}.wrapping_sub(rhs.{{ c }}),
+            {%- endfor %}
+        }
+    }
+
+    /// Returns a vector containing the wrapping multiplication of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.wrapping_mul(rhs.x), self.y.wrapping_mul(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn wrapping_mul(self, rhs: Self) -> Self {
+        Self {
+            {% for c in components %}
+                {{ c }}: self.{{ c }}.wrapping_mul(rhs.{{ c }}),
+            {%- endfor %}
+        }
+    }
+
+    /// Returns a vector containing the wrapping division of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.wrapping_div(rhs.x), self.y.wrapping_div(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn wrapping_div(self, rhs: Self) -> Self {
+        Self {
+            {% for c in components %}
+                {{ c }}: self.{{ c }}.wrapping_div(rhs.{{ c }}),
+            {%- endfor %}
+        }
+    }
+
+    /// Returns a vector containing the saturating addition of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.saturating_add(rhs.x), self.y.saturating_add(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn saturating_add(self, rhs: Self) -> Self {
+        Self {
+            {% for c in components %}
+                {{ c }}: self.{{ c }}.saturating_add(rhs.{{ c }}),
+            {%- endfor %}
+        }
+    }
+
+    /// Returns a vector containing the saturating subtraction of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.saturating_sub(rhs.x), self.y.saturating_sub(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn saturating_sub(self, rhs: Self) -> Self {
+        Self {
+            {% for c in components %}
+                {{ c }}: self.{{ c }}.saturating_sub(rhs.{{ c }}),
+            {%- endfor %}
+        }
+    }
+
+    /// Returns a vector containing the saturating multiplication of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.saturating_mul(rhs.x), self.y.saturating_mul(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn saturating_mul(self, rhs: Self) -> Self {
+        Self {
+            {% for c in components %}
+                {{ c }}: self.{{ c }}.saturating_mul(rhs.{{ c }}),
+            {%- endfor %}
+        }
+    }
+
+    /// Returns a vector containing the saturating division of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.saturating_div(rhs.x), self.y.saturating_div(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn saturating_div(self, rhs: Self) -> Self {
+        Self {
+            {% for c in components %}
+                {{ c }}: self.{{ c }}.saturating_div(rhs.{{ c }}),
+            {%- endfor %}
+        }
+    }
 {% endif %}
 }
 
@@ -2507,7 +2709,7 @@ impl From<Vec3> for Vec3A {
 }
 
 impl From<Vec4> for Vec3A {
-    /// Creates a `Vec3A` from the `x`, `y` and `z` elements of `self` discarding `w`.
+    /// Creates a [`Vec3A`] from the `x`, `y` and `z` elements of `self` discarding `w`.
     ///
     /// On architectures where SIMD is supported such as SSE2 on `x86_64` this conversion is a noop.
     #[inline]
@@ -2620,4 +2822,36 @@ impl DerefMut for {{ self_t }} {
         unsafe { &mut *(self as *mut Self).cast() }
     }
 }
+{% endif %}
+
+{% if from_types %}
+    {% for ty in from_types %}
+    impl From<{{ ty }}> for {{ self_t }} {
+        #[inline]
+        fn from(v: {{ ty }}) -> Self {
+            Self::new(
+                {% for c in components %}
+                    {{ scalar_t }}::from(v.{{ c }}),
+                {% endfor %}
+            )
+        }
+    }
+    {% endfor %}
+{% endif %}
+
+{% if try_from_types %}
+    {% for ty in try_from_types %}
+    impl TryFrom<{{ ty }}> for {{ self_t }} {
+        type Error = core::num::TryFromIntError;
+
+        #[inline]
+        fn try_from(v: {{ ty }}) -> Result<Self, Self::Error> {
+            Ok(Self::new(
+                {% for c in components %}
+                    {{ scalar_t }}::try_from(v.{{ c }})?,
+                {% endfor %}
+            ))
+        }
+    }
+    {% endfor %}
 {% endif %}

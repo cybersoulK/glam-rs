@@ -5,7 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog], and this project adheres to
 [Semantic Versioning].
 
-## [Unreleased]
+## [0.24.2] - 2023-09-23
+
+### Fixed
+
+* Fixed singularities in `Quat::to_euler`.
+
+### Added
+
+* Added `div_euclid` and `rem_euclid` to integer vector types.
+
+* Added wrapping and saturating arithmetic operations to integer vector types.
+
+* Added `to_scale_angle_translation` to 2D affine types.
+
+* Added `mul_assign` ops to affine types.
+
+### Changed
+
+* Disable default features on optional `rkyv` dependency.
+
+## [0.24.1] - 2023-06-24
+
+### Added
+
+* Implemented missing `bytemuck`, `mint`, `rand`, `rkyv` and `serde` traits for
+  `i64` and `u64` types.
+
+* Added missing safe `From` conversions from `f32` vectors to `f64` vectors.
+
+* Added `TryFrom` implementations between different vector types.
+
+* Added `test` and `set` methods to `bool` vector types for testing and setting
+  individual mask elements.
+
+* Added `MIN`, `MAX`, `INFINITY` and `NEG_INFINITY` vector constants.
+
+## [0.24.0] - 2023-04-24
+
+### Breaking changes
+
+* Enabling `libm` in a `std` build now overrides the `std` math functions. This
+  is unlikely to break anything but it is a change in behaviour.
 
 ### Added
 
@@ -15,6 +56,9 @@ The format is based on [Keep a Changelog], and this project adheres to
 * Added `length_squared` method on signed and unsigned integer vector types.
 
 * Added `distance_squared` method on signed integer vector types.
+
+* Implemented the `bytemuck` `AnyBitPattern` trait on `Vec3A`, `Mat3A` and
+  `Affine3A`.
 
 ### Changed
 
@@ -920,7 +964,10 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 [Keep a Changelog]: https://keepachangelog.com/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
-[Unreleased]: https://github.com/bitshifter/glam-rs/compare/0.23.0...HEAD
+[Unreleased]: https://github.com/bitshifter/glam-rs/compare/0.24.2...HEAD
+[0.24.2]: https://github.com/bitshifter/glam-rs/compare/0.24.1...0.24.2
+[0.24.1]: https://github.com/bitshifter/glam-rs/compare/0.24.0...0.24.1
+[0.24.0]: https://github.com/bitshifter/glam-rs/compare/0.23.0...0.24.0
 [0.23.0]: https://github.com/bitshifter/glam-rs/compare/0.22.0...0.23.0
 [0.22.0]: https://github.com/bitshifter/glam-rs/compare/0.21.3...0.22.0
 [0.21.3]: https://github.com/bitshifter/glam-rs/compare/0.21.2...0.21.3

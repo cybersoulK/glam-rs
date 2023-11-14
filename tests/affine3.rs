@@ -294,6 +294,10 @@ macro_rules! impl_affine3_tests {
             assert_approx_eq!(m0, m0 * $affine3::IDENTITY);
             assert_approx_eq!(m0, $affine3::IDENTITY * m0);
 
+            let mut m1 = m0;
+            m1 *= $affine3::IDENTITY;
+            assert_approx_eq!(m1, m0);
+
             let mat4 = $mat4::from(m0);
             assert_approx_eq!(mat4, $affine3::IDENTITY * mat4);
             assert_approx_eq!(mat4, mat4 * $affine3::IDENTITY);
@@ -331,10 +335,7 @@ macro_rules! impl_affine3_tests {
 
         glam_test!(test_product, {
             let ident = $affine3::IDENTITY;
-            assert_eq!(
-                vec![ident, ident].iter().product::<$affine3>(),
-                ident * ident
-            );
+            assert_eq!([ident, ident].iter().product::<$affine3>(), ident * ident);
         });
 
         glam_test!(test_affine3_is_finite, {

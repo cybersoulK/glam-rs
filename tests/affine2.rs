@@ -147,10 +147,82 @@ macro_rules! impl_affine2_tests {
             should_glam_assert!({ $affine2::ZERO.inverse() });
         });
 
+        glam_test!(test_affine2_decompose, {
+            // identity
+            let (out_scale, out_rotation, out_translation) =
+                $affine2::IDENTITY.to_scale_angle_translation();
+            assert_approx_eq!($vec2::ONE, out_scale);
+            assert_eq!(out_rotation, 0.0);
+            assert_approx_eq!($vec2::ZERO, out_translation);
+
+            // no scale
+            let in_scale = $vec2::ONE;
+            let in_translation = $vec2::new(-2.0, 4.0);
+            let in_rotation = $t::to_radians(-45.0);
+            let in_mat =
+                $affine2::from_scale_angle_translation(in_scale, in_rotation, in_translation);
+            let (out_scale, out_rotation, out_translation) = in_mat.to_scale_angle_translation();
+            assert_approx_eq!(in_scale, out_scale, 1e-6);
+            assert_approx_eq!(in_rotation, out_rotation);
+            assert_approx_eq!(in_translation, out_translation);
+            assert_approx_eq!(
+                in_mat,
+                $affine2::from_scale_angle_translation(out_scale, out_rotation, out_translation),
+                1e-6
+            );
+
+            // positive scale
+            let in_scale = $vec2::new(1.0, 2.0);
+            let in_mat =
+                $affine2::from_scale_angle_translation(in_scale, in_rotation, in_translation);
+            let (out_scale, out_rotation, out_translation) = in_mat.to_scale_angle_translation();
+            assert_approx_eq!(in_scale, out_scale, 1e-6);
+            assert_approx_eq!(in_rotation, out_rotation);
+            assert_approx_eq!(in_translation, out_translation);
+            assert_approx_eq!(
+                in_mat,
+                $affine2::from_scale_angle_translation(out_scale, out_rotation, out_translation),
+                1e-5
+            );
+
+            // negative scale
+            let in_scale = $vec2::new(-4.0, 1.0);
+            let in_mat =
+                $affine2::from_scale_angle_translation(in_scale, in_rotation, in_translation);
+            let (out_scale, out_rotation, out_translation) = in_mat.to_scale_angle_translation();
+            assert_approx_eq!(in_scale, out_scale, 1e-6);
+            assert_approx_eq!(in_rotation, out_rotation);
+            assert_approx_eq!(in_translation, out_translation);
+            assert_approx_eq!(
+                in_mat,
+                $affine2::from_scale_angle_translation(out_scale, out_rotation, out_translation),
+                1e-5
+            );
+
+            // negative scale
+            let in_scale = $vec2::new(4.0, -1.0);
+            let in_mat =
+                $affine2::from_scale_angle_translation(in_scale, in_rotation, in_translation);
+            let (out_scale, out_rotation, out_translation) = in_mat.to_scale_angle_translation();
+            // out_scale and out_rotation are different but they produce the same matrix
+            // assert_approx_eq!(in_scale, out_scale, 1e-6);
+            // assert_approx_eq!(in_rotation, out_rotation);
+            assert_approx_eq!(in_translation, out_translation);
+            assert_approx_eq!(
+                in_mat,
+                $affine2::from_scale_angle_translation(out_scale, out_rotation, out_translation),
+                1e-6
+            );
+        });
+
         glam_test!(test_affine2_ops, {
             let m0 = $affine2::from_cols_array_2d(&MATRIX2D);
             assert_approx_eq!(m0, m0 * $affine2::IDENTITY);
             assert_approx_eq!(m0, $affine2::IDENTITY * m0);
+
+            let mut m1 = m0;
+            m1 *= $affine2::IDENTITY;
+            assert_approx_eq!(m1, m0);
 
             let mat3 = $mat3::from(m0);
             assert_approx_eq!(mat3, $affine2::IDENTITY * mat3);
@@ -181,10 +253,7 @@ macro_rules! impl_affine2_tests {
 
         glam_test!(test_product, {
             let ident = $affine2::IDENTITY;
-            assert_eq!(
-                vec![ident, ident].iter().product::<$affine2>(),
-                ident * ident
-            );
+            assert_eq!([ident, ident].iter().product::<$affine2>(), ident * ident);
         });
 
         glam_test!(test_affine2_is_finite, {

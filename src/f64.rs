@@ -7,6 +7,8 @@ mod dquat;
 mod dvec2;
 mod dvec3;
 mod dvec4;
+mod float;
+pub(crate) mod math;
 
 pub use daffine2::DAffine2;
 pub use daffine3::DAffine3;

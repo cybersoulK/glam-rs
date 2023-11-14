@@ -1,6 +1,6 @@
 // Generated from vec.rs.tera template. Edit the template, not the generated file.
 
-use crate::{wasm32::*, BVec3A, Vec2, Vec3, Vec4};
+use crate::{f32::math, wasm32::*, BVec3A, Vec2, Vec3, Vec4};
 
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
@@ -9,10 +9,7 @@ use core::{f32, ops::*};
 
 use core::arch::wasm32::*;
 
-#[cfg(feature = "libm")]
-#[allow(unused_imports)]
-use num_traits::Float;
-
+#[repr(C)]
 union UnionCast {
     a: [f32; 4],
     v: Vec3A,
@@ -27,10 +24,10 @@ pub const fn vec3a(x: f32, y: f32, z: f32) -> Vec3A {
 /// A 3-dimensional vector.
 ///
 /// SIMD vector types are used for storage on supported platforms for better
-/// performance than the `Vec3` type.
+/// performance than the [`Vec3`] type.
 ///
-/// It is possible to convert between `Vec3` and `Vec3A` types using `From`
-/// trait implementations.
+/// It is possible to convert between [`Vec3`] and [`Vec3A`] types using [`From`]
+/// or [`Into`] trait implementations.
 ///
 /// This type is 16 byte aligned.
 #[derive(Clone, Copy)]
@@ -47,25 +44,37 @@ impl Vec3A {
     /// All negative ones.
     pub const NEG_ONE: Self = Self::splat(-1.0);
 
-    /// All NAN.
+    /// All `f32::MIN`.
+    pub const MIN: Self = Self::splat(f32::MIN);
+
+    /// All `f32::MAX`.
+    pub const MAX: Self = Self::splat(f32::MAX);
+
+    /// All `f32::NAN`.
     pub const NAN: Self = Self::splat(f32::NAN);
 
-    /// A unit-length vector pointing along the positive X axis.
+    /// All `f32::INFINITY`.
+    pub const INFINITY: Self = Self::splat(f32::INFINITY);
+
+    /// All `f32::NEG_INFINITY`.
+    pub const NEG_INFINITY: Self = Self::splat(f32::NEG_INFINITY);
+
+    /// A unit vector pointing along the positive X axis.
     pub const X: Self = Self::new(1.0, 0.0, 0.0);
 
-    /// A unit-length vector pointing along the positive Y axis.
+    /// A unit vector pointing along the positive Y axis.
     pub const Y: Self = Self::new(0.0, 1.0, 0.0);
 
-    /// A unit-length vector pointing along the positive Z axis.
+    /// A unit vector pointing along the positive Z axis.
     pub const Z: Self = Self::new(0.0, 0.0, 1.0);
 
-    /// A unit-length vector pointing along the negative X axis.
+    /// A unit vector pointing along the negative X axis.
     pub const NEG_X: Self = Self::new(-1.0, 0.0, 0.0);
 
-    /// A unit-length vector pointing along the negative Y axis.
+    /// A unit vector pointing along the negative Y axis.
     pub const NEG_Y: Self = Self::new(0.0, -1.0, 0.0);
 
-    /// A unit-length vector pointing along the negative Z axis.
+    /// A unit vector pointing along the negative Z axis.
     pub const NEG_Z: Self = Self::new(0.0, 0.0, -1.0);
 
     /// The unit axes.
@@ -142,7 +151,7 @@ impl Vec3A {
 
     /// Creates a 2D vector from the `x` and `y` elements of `self`, discarding `z`.
     ///
-    /// Truncation may also be performed by using `self.xy()` or `Vec2::from()`.
+    /// Truncation may also be performed by using [`self.xy()`][crate::swizzles::Vec3Swizzles::xy()].
     #[inline]
     pub fn truncate(self) -> Vec2 {
         use crate::swizzles::Vec3Swizzles;
@@ -383,11 +392,33 @@ impl Vec3A {
         (self - rhs).length_squared()
     }
 
+    /// Returns the element-wise quotient of [Euclidean division] of `self` by `rhs`.
+    #[inline]
+    pub fn div_euclid(self, rhs: Self) -> Self {
+        Self::new(
+            math::div_euclid(self.x, rhs.x),
+            math::div_euclid(self.y, rhs.y),
+            math::div_euclid(self.z, rhs.z),
+        )
+    }
+
+    /// Returns the element-wise remainder of [Euclidean division] of `self` by `rhs`.
+    ///
+    /// [Euclidean division]: f32::rem_euclid
+    #[inline]
+    pub fn rem_euclid(self, rhs: Self) -> Self {
+        Self::new(
+            math::rem_euclid(self.x, rhs.x),
+            math::rem_euclid(self.y, rhs.y),
+            math::rem_euclid(self.z, rhs.z),
+        )
+    }
+
     /// Returns `self` normalized to length 1.0.
     ///
     /// For valid results, `self` must _not_ be of length zero, nor very close to zero.
     ///
-    /// See also [`Self::try_normalize`] and [`Self::normalize_or_zero`].
+    /// See also [`Self::try_normalize()`] and [`Self::normalize_or_zero()`].
     ///
     /// Panics
     ///
@@ -407,7 +438,7 @@ impl Vec3A {
     /// In particular, if the input is zero (or very close to zero), or non-finite,
     /// the result of this operation will be `None`.
     ///
-    /// See also [`Self::normalize_or_zero`].
+    /// See also [`Self::normalize_or_zero()`].
     #[must_use]
     #[inline]
     pub fn try_normalize(self) -> Option<Self> {
@@ -424,7 +455,7 @@ impl Vec3A {
     /// In particular, if the input is zero (or very close to zero), or non-finite,
     /// the result of this operation will be zero.
     ///
-    /// See also [`Self::try_normalize`].
+    /// See also [`Self::try_normalize()`].
     #[must_use]
     #[inline]
     pub fn normalize_or_zero(self) -> Self {
@@ -442,7 +473,7 @@ impl Vec3A {
     #[inline]
     pub fn is_normalized(self) -> bool {
         // TODO: do something with epsilon
-        (self.length_squared() - 1.0).abs() <= 1e-4
+        math::abs(self.length_squared() - 1.0) <= 1e-4
     }
 
     /// Returns the vector projection of `self` onto `rhs`.
@@ -527,6 +558,13 @@ impl Vec3A {
         Self(f32x4_ceil(self.0))
     }
 
+    /// Returns a vector containing the integer part each element of `self`. This means numbers are
+    /// always truncated towards zero.
+    #[inline]
+    pub fn trunc(self) -> Self {
+        Self(f32x4_trunc(self.0))
+    }
+
     /// Returns a vector containing the fractional part of the vector, e.g. `self -
     /// self.floor()`.
     ///
@@ -540,13 +578,17 @@ impl Vec3A {
     /// `self`.
     #[inline]
     pub fn exp(self) -> Self {
-        Self::new(self.x.exp(), self.y.exp(), self.z.exp())
+        Self::new(math::exp(self.x), math::exp(self.y), math::exp(self.z))
     }
 
     /// Returns a vector containing each element of `self` raised to the power of `n`.
     #[inline]
     pub fn powf(self, n: f32) -> Self {
-        Self::new(self.x.powf(n), self.y.powf(n), self.z.powf(n))
+        Self::new(
+            math::powf(self.x, n),
+            math::powf(self.y, n),
+            math::powf(self.z, n),
+        )
     }
 
     /// Returns a vector containing the reciprocal `1.0/n` of each element of `self`.
@@ -590,9 +632,9 @@ impl Vec3A {
         glam_assert!(min <= max);
         let length_sq = self.length_squared();
         if length_sq < min * min {
-            self * (length_sq.sqrt().recip() * min)
+            min * (self / math::sqrt(length_sq))
         } else if length_sq > max * max {
-            self * (length_sq.sqrt().recip() * max)
+            max * (self / math::sqrt(length_sq))
         } else {
             self
         }
@@ -602,7 +644,7 @@ impl Vec3A {
     pub fn clamp_length_max(self, max: f32) -> Self {
         let length_sq = self.length_squared();
         if length_sq > max * max {
-            self * (length_sq.sqrt().recip() * max)
+            max * (self / math::sqrt(length_sq))
         } else {
             self
         }
@@ -612,7 +654,7 @@ impl Vec3A {
     pub fn clamp_length_min(self, min: f32) -> Self {
         let length_sq = self.length_squared();
         if length_sq < min * min {
-            self * (length_sq.sqrt().recip() * min)
+            min * (self / math::sqrt(length_sq))
         } else {
             self
         }
@@ -628,41 +670,42 @@ impl Vec3A {
     #[inline]
     pub fn mul_add(self, a: Self, b: Self) -> Self {
         Self::new(
-            self.x.mul_add(a.x, b.x),
-            self.y.mul_add(a.y, b.y),
-            self.z.mul_add(a.z, b.z),
+            math::mul_add(self.x, a.x, b.x),
+            math::mul_add(self.y, a.y, b.y),
+            math::mul_add(self.z, a.z, b.z),
         )
     }
 
     /// Returns the angle (in radians) between two vectors.
     ///
-    /// The input vectors do not need to be unit length however they must be non-zero.
+    /// The inputs do not need to be unit vectors however they must be non-zero.
     #[inline]
     pub fn angle_between(self, rhs: Self) -> f32 {
-        use crate::FloatEx;
-        self.dot(rhs)
-            .div(self.length_squared().mul(rhs.length_squared()).sqrt())
-            .acos_approx()
+        math::acos_approx(
+            self.dot(rhs)
+                .div(math::sqrt(self.length_squared().mul(rhs.length_squared()))),
+        )
     }
 
     /// Returns some vector that is orthogonal to the given one.
     ///
     /// The input vector must be finite and non-zero.
     ///
-    /// The output vector is not necessarily unit-length.
-    /// For that use [`Self::any_orthonormal_vector`] instead.
+    /// The output vector is not necessarily unit length. For that use
+    /// [`Self::any_orthonormal_vector()`] instead.
     #[inline]
     pub fn any_orthogonal_vector(&self) -> Self {
         // This can probably be optimized
-        if self.x.abs() > self.y.abs() {
+        if math::abs(self.x) > math::abs(self.y) {
             Self::new(-self.z, 0.0, self.x) // self.cross(Self::Y)
         } else {
             Self::new(0.0, self.z, -self.y) // self.cross(Self::X)
         }
     }
 
-    /// Returns any unit-length vector that is orthogonal to the given one.
-    /// The input vector must be finite and non-zero.
+    /// Returns any unit vector that is orthogonal to the given one.
+    ///
+    /// The input vector must be unit length.
     ///
     /// # Panics
     ///
@@ -671,17 +714,14 @@ impl Vec3A {
     pub fn any_orthonormal_vector(&self) -> Self {
         glam_assert!(self.is_normalized());
         // From https://graphics.pixar.com/library/OrthonormalB/paper.pdf
-        #[cfg(feature = "std")]
-        let sign = (1.0_f32).copysign(self.z);
-        #[cfg(not(feature = "std"))]
-        let sign = self.z.signum();
+        let sign = math::signum(self.z);
         let a = -1.0 / (sign + self.z);
         let b = self.x * self.y * a;
         Self::new(b, sign + self.y * self.y * a, -self.y)
     }
 
-    /// Given a unit-length vector return two other vectors that together form an orthonormal
-    /// basis.  That is, all three vectors are orthogonal to each other and are normalized.
+    /// Given a unit vector return two other vectors that together form an orthonormal
+    /// basis. That is, all three vectors are orthogonal to each other and are normalized.
     ///
     /// # Panics
     ///
@@ -690,10 +730,7 @@ impl Vec3A {
     pub fn any_orthonormal_pair(&self) -> (Self, Self) {
         glam_assert!(self.is_normalized());
         // From https://graphics.pixar.com/library/OrthonormalB/paper.pdf
-        #[cfg(feature = "std")]
-        let sign = (1.0_f32).copysign(self.z);
-        #[cfg(not(feature = "std"))]
-        let sign = self.z.signum();
+        let sign = math::signum(self.z);
         let a = -1.0 / (sign + self.z);
         let b = self.x * self.y * a;
         (
@@ -1095,7 +1132,7 @@ impl From<Vec3> for Vec3A {
 }
 
 impl From<Vec4> for Vec3A {
-    /// Creates a `Vec3A` from the `x`, `y` and `z` elements of `self` discarding `w`.
+    /// Creates a [`Vec3A`] from the `x`, `y` and `z` elements of `self` discarding `w`.
     ///
     /// On architectures where SIMD is supported such as SSE2 on `x86_64` this conversion is a noop.
     #[inline]

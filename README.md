@@ -74,7 +74,7 @@ defined in `std`. For example:
 
 ```toml
 [dependencies]
-glam = { version = "0.23", default-features = false, features = ["libm"] }
+glam = { version = "0.24", default-features = false, features = ["libm"] }
 ```
 
 To support both `std` and `no_std` builds in project, you can use the following
@@ -88,37 +88,33 @@ std = ["glam/std"]
 libm = ["glam/libm"]
 
 [dependencies]
-glam = { version = "0.23", default-features = false }
+glam = { version = "0.24", default-features = false }
 ```
 
 ### Optional features
 
 * [`approx`] - traits and macros for approximate float comparisons
 * [`bytemuck`] - for casting into slices of bytes
-* [`libm`] - required to compile with `no_std`
+* [`libm`] - uses `libm` math functions instead of `std`, required to compile
+  with `no_std`
 * [`mint`] - for interoperating with other 3D math libraries
-* [`num-traits`] - required to compile `no_std`, will be included when enabling
-  the `libm` feature
 * [`rand`] - implementations of `Distribution` trait for all `glam` types.
 * [`serde`] - implementations of `Serialize` and `Deserialize` for all `glam`
   types. Note that serialization should work between builds of `glam` with and
   without SIMD enabled
-* [`rkyv`] - implementations of `Archive`, `Serialize` and `Deserialize` for all
-  `glam` types. Note that serialization is not interoperable with and without the
-  `scalar-math` feature. It should work between all other builds of `glam`.
-  Endian conversion is currently not supported
-  [`borsh]`] - implementations of `BorshSerialize`, `BorshDeserialize` for all `glam` types.
+* [`rkyv`] - implementations of `Archive`, `Serialize` and `Deserialize` for
+  all `glam` types. Note that serialization is not interoperable with and
+  without the `scalar-math` feature. It should work between all other builds of
+  `glam`.  Endian conversion is currently not supported
 * [`bytecheck`] - to perform archive validation when using the `rkyv` feature
 
 [`approx`]: https://docs.rs/approx
 [`bytemuck`]: https://docs.rs/bytemuck
 [`libm`]: https://github.com/rust-lang/libm
 [`mint`]: https://github.com/kvark/mint
-[`num-traits`]: https://github.com/rust-num/num-traits
 [`rand`]: https://github.com/rust-random/rand
 [`serde`]: https://serde.rs
 [`rkyv`]: https://github.com/rkyv/rkyv
-[`borsh`]: https://github.com/near/borsh-rs
 [`bytecheck`]: https://github.com/rkyv/bytecheck
 
 ### Feature gates
@@ -219,23 +215,26 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
 
-Thank you to all of the `glam` [contributors]!
-
-[Code of Conduct]: https://www.rust-lang.org/en-US/conduct.html
-[contributors]: https://github.com/bitshifter/glam-rs/graphs/contributors
-
-## Support
-
 If you are interested in contributing or have a request or suggestion
 [start a discussion] on GitHub. See [CONTRIBUTING.md] for more information for
 contributors.
+
+Most code in `glam` is generated, see the [codegen README] for details.
+
+Thank you to all of the `glam` [contributors]!
+
+[Code of Conduct]: https://www.rust-lang.org/en-US/conduct.html
+[start a discussion]: https://github.com/bitshifter/glam-rs/discussions
+[CONTRIBUTING.md]: CONTRIBUTING.md
+[codegen README]: codegen/README.md
+[contributors]: https://github.com/bitshifter/glam-rs/graphs/contributors
+
+## Support
 
 The [Game Development in Rust Discord] and [Bevy Engine Discord] servers are
 not official support channels but can be good places to ask for help with
 `glam`.
 
-[start a discussion]: https://github.com/bitshifter/glam-rs/discussions
-[CONTRIBUTING.md]: CONTRIBUTING.md
 [Game Development in Rust Discord]: https://discord.gg/yNtPTb2
 [Bevy Engine Discord]: https://discord.gg/gMUk5Ph
 

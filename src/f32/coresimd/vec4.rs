@@ -1,6 +1,6 @@
 // Generated from vec.rs.tera template. Edit the template, not the generated file.
 
-use crate::{coresimd::*, BVec4A, Vec2, Vec3, Vec3A};
+use crate::{coresimd::*, f32::math, BVec4A, Vec2, Vec3, Vec3A};
 
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
@@ -9,10 +9,6 @@ use core::{f32, ops::*};
 
 use core::simd::*;
 use std::simd::StdFloat;
-
-#[cfg(feature = "libm")]
-#[allow(unused_imports)]
-use num_traits::Float;
 
 /// Creates a 4-dimensional vector.
 #[inline(always)]
@@ -39,31 +35,43 @@ impl Vec4 {
     /// All negative ones.
     pub const NEG_ONE: Self = Self::splat(-1.0);
 
-    /// All NAN.
+    /// All `f32::MIN`.
+    pub const MIN: Self = Self::splat(f32::MIN);
+
+    /// All `f32::MAX`.
+    pub const MAX: Self = Self::splat(f32::MAX);
+
+    /// All `f32::NAN`.
     pub const NAN: Self = Self::splat(f32::NAN);
 
-    /// A unit-length vector pointing along the positive X axis.
+    /// All `f32::INFINITY`.
+    pub const INFINITY: Self = Self::splat(f32::INFINITY);
+
+    /// All `f32::NEG_INFINITY`.
+    pub const NEG_INFINITY: Self = Self::splat(f32::NEG_INFINITY);
+
+    /// A unit vector pointing along the positive X axis.
     pub const X: Self = Self::new(1.0, 0.0, 0.0, 0.0);
 
-    /// A unit-length vector pointing along the positive Y axis.
+    /// A unit vector pointing along the positive Y axis.
     pub const Y: Self = Self::new(0.0, 1.0, 0.0, 0.0);
 
-    /// A unit-length vector pointing along the positive Z axis.
+    /// A unit vector pointing along the positive Z axis.
     pub const Z: Self = Self::new(0.0, 0.0, 1.0, 0.0);
 
-    /// A unit-length vector pointing along the positive W axis.
+    /// A unit vector pointing along the positive W axis.
     pub const W: Self = Self::new(0.0, 0.0, 0.0, 1.0);
 
-    /// A unit-length vector pointing along the negative X axis.
+    /// A unit vector pointing along the negative X axis.
     pub const NEG_X: Self = Self::new(-1.0, 0.0, 0.0, 0.0);
 
-    /// A unit-length vector pointing along the negative Y axis.
+    /// A unit vector pointing along the negative Y axis.
     pub const NEG_Y: Self = Self::new(0.0, -1.0, 0.0, 0.0);
 
-    /// A unit-length vector pointing along the negative Z axis.
+    /// A unit vector pointing along the negative Z axis.
     pub const NEG_Z: Self = Self::new(0.0, 0.0, -1.0, 0.0);
 
-    /// A unit-length vector pointing along the negative W axis.
+    /// A unit vector pointing along the negative W axis.
     pub const NEG_W: Self = Self::new(0.0, 0.0, 0.0, -1.0);
 
     /// The unit axes.
@@ -126,11 +134,11 @@ impl Vec4 {
         slice[3] = self.w;
     }
 
-    /// Creates a 2D vector from the `x`, `y` and `z` elements of `self`, discarding `w`.
+    /// Creates a 3D vector from the `x`, `y` and `z` elements of `self`, discarding `w`.
     ///
-    /// Truncation to `Vec3` may also be performed by using `self.xyz()` or `Vec3::from()`.
+    /// Truncation to [`Vec3`] may also be performed by using [`self.xyz()`][crate::swizzles::Vec4Swizzles::xyz()].
     ///
-    /// To truncate to `Vec3A` use `Vec3A::from()`.
+    /// To truncate to [`Vec3A`] use [`Vec3A::from()`].
     #[inline]
     pub fn truncate(self) -> Vec3 {
         use crate::swizzles::Vec4Swizzles;
@@ -146,7 +154,7 @@ impl Vec4 {
     /// Returns a vector where every component is the dot product of `self` and `rhs`.
     #[inline]
     pub fn dot_into_vec(self, rhs: Self) -> Self {
-        Self(unsafe { dot4_into_f32x4(self.0, rhs.0) })
+        Self(dot4_into_f32x4(self.0, rhs.0))
     }
 
     /// Returns a vector containing the minimum values for each element of `self` and `rhs`.
@@ -344,11 +352,35 @@ impl Vec4 {
         (self - rhs).length_squared()
     }
 
+    /// Returns the element-wise quotient of [Euclidean division] of `self` by `rhs`.
+    #[inline]
+    pub fn div_euclid(self, rhs: Self) -> Self {
+        Self::new(
+            math::div_euclid(self.x, rhs.x),
+            math::div_euclid(self.y, rhs.y),
+            math::div_euclid(self.z, rhs.z),
+            math::div_euclid(self.w, rhs.w),
+        )
+    }
+
+    /// Returns the element-wise remainder of [Euclidean division] of `self` by `rhs`.
+    ///
+    /// [Euclidean division]: f32::rem_euclid
+    #[inline]
+    pub fn rem_euclid(self, rhs: Self) -> Self {
+        Self::new(
+            math::rem_euclid(self.x, rhs.x),
+            math::rem_euclid(self.y, rhs.y),
+            math::rem_euclid(self.z, rhs.z),
+            math::rem_euclid(self.w, rhs.w),
+        )
+    }
+
     /// Returns `self` normalized to length 1.0.
     ///
     /// For valid results, `self` must _not_ be of length zero, nor very close to zero.
     ///
-    /// See also [`Self::try_normalize`] and [`Self::normalize_or_zero`].
+    /// See also [`Self::try_normalize()`] and [`Self::normalize_or_zero()`].
     ///
     /// Panics
     ///
@@ -368,7 +400,7 @@ impl Vec4 {
     /// In particular, if the input is zero (or very close to zero), or non-finite,
     /// the result of this operation will be `None`.
     ///
-    /// See also [`Self::normalize_or_zero`].
+    /// See also [`Self::normalize_or_zero()`].
     #[must_use]
     #[inline]
     pub fn try_normalize(self) -> Option<Self> {
@@ -385,7 +417,7 @@ impl Vec4 {
     /// In particular, if the input is zero (or very close to zero), or non-finite,
     /// the result of this operation will be zero.
     ///
-    /// See also [`Self::try_normalize`].
+    /// See also [`Self::try_normalize()`].
     #[must_use]
     #[inline]
     pub fn normalize_or_zero(self) -> Self {
@@ -403,7 +435,7 @@ impl Vec4 {
     #[inline]
     pub fn is_normalized(self) -> bool {
         // TODO: do something with epsilon
-        (self.length_squared() - 1.0).abs() <= 1e-4
+        math::abs(self.length_squared() - 1.0) <= 1e-4
     }
 
     /// Returns the vector projection of `self` onto `rhs`.
@@ -488,6 +520,13 @@ impl Vec4 {
         Self(self.0.ceil())
     }
 
+    /// Returns a vector containing the integer part each element of `self`. This means numbers are
+    /// always truncated towards zero.
+    #[inline]
+    pub fn trunc(self) -> Self {
+        Self(self.0.trunc())
+    }
+
     /// Returns a vector containing the fractional part of the vector, e.g. `self -
     /// self.floor()`.
     ///
@@ -501,17 +540,22 @@ impl Vec4 {
     /// `self`.
     #[inline]
     pub fn exp(self) -> Self {
-        Self::new(self.x.exp(), self.y.exp(), self.z.exp(), self.w.exp())
+        Self::new(
+            math::exp(self.x),
+            math::exp(self.y),
+            math::exp(self.z),
+            math::exp(self.w),
+        )
     }
 
     /// Returns a vector containing each element of `self` raised to the power of `n`.
     #[inline]
     pub fn powf(self, n: f32) -> Self {
         Self::new(
-            self.x.powf(n),
-            self.y.powf(n),
-            self.z.powf(n),
-            self.w.powf(n),
+            math::powf(self.x, n),
+            math::powf(self.y, n),
+            math::powf(self.z, n),
+            math::powf(self.w, n),
         )
     }
 
@@ -556,9 +600,9 @@ impl Vec4 {
         glam_assert!(min <= max);
         let length_sq = self.length_squared();
         if length_sq < min * min {
-            self * (length_sq.sqrt().recip() * min)
+            min * (self / math::sqrt(length_sq))
         } else if length_sq > max * max {
-            self * (length_sq.sqrt().recip() * max)
+            max * (self / math::sqrt(length_sq))
         } else {
             self
         }
@@ -568,7 +612,7 @@ impl Vec4 {
     pub fn clamp_length_max(self, max: f32) -> Self {
         let length_sq = self.length_squared();
         if length_sq > max * max {
-            self * (length_sq.sqrt().recip() * max)
+            max * (self / math::sqrt(length_sq))
         } else {
             self
         }
@@ -578,7 +622,7 @@ impl Vec4 {
     pub fn clamp_length_min(self, min: f32) -> Self {
         let length_sq = self.length_squared();
         if length_sq < min * min {
-            self * (length_sq.sqrt().recip() * min)
+            min * (self / math::sqrt(length_sq))
         } else {
             self
         }

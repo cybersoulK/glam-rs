@@ -1,15 +1,11 @@
 // Generated from vec.rs.tera template. Edit the template, not the generated file.
 
-use crate::{BVec2, Vec3};
+use crate::{f32::math, BVec2, Vec3};
 
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
 use core::{f32, ops::*};
-
-#[cfg(feature = "libm")]
-#[allow(unused_imports)]
-use num_traits::Float;
 
 /// Creates a 2-dimensional vector.
 #[inline(always)]
@@ -37,19 +33,31 @@ impl Vec2 {
     /// All negative ones.
     pub const NEG_ONE: Self = Self::splat(-1.0);
 
-    /// All NAN.
+    /// All `f32::MIN`.
+    pub const MIN: Self = Self::splat(f32::MIN);
+
+    /// All `f32::MAX`.
+    pub const MAX: Self = Self::splat(f32::MAX);
+
+    /// All `f32::NAN`.
     pub const NAN: Self = Self::splat(f32::NAN);
 
-    /// A unit-length vector pointing along the positive X axis.
+    /// All `f32::INFINITY`.
+    pub const INFINITY: Self = Self::splat(f32::INFINITY);
+
+    /// All `f32::NEG_INFINITY`.
+    pub const NEG_INFINITY: Self = Self::splat(f32::NEG_INFINITY);
+
+    /// A unit vector pointing along the positive X axis.
     pub const X: Self = Self::new(1.0, 0.0);
 
-    /// A unit-length vector pointing along the positive Y axis.
+    /// A unit vector pointing along the positive Y axis.
     pub const Y: Self = Self::new(0.0, 1.0);
 
-    /// A unit-length vector pointing along the negative X axis.
+    /// A unit vector pointing along the negative X axis.
     pub const NEG_X: Self = Self::new(-1.0, 0.0);
 
-    /// A unit-length vector pointing along the negative Y axis.
+    /// A unit vector pointing along the negative Y axis.
     pub const NEG_Y: Self = Self::new(0.0, -1.0);
 
     /// The unit axes.
@@ -246,8 +254,8 @@ impl Vec2 {
     #[inline]
     pub fn abs(self) -> Self {
         Self {
-            x: self.x.abs(),
-            y: self.y.abs(),
+            x: math::abs(self.x),
+            y: math::abs(self.y),
         }
     }
 
@@ -259,8 +267,8 @@ impl Vec2 {
     #[inline]
     pub fn signum(self) -> Self {
         Self {
-            x: self.x.signum(),
-            y: self.y.signum(),
+            x: math::signum(self.x),
+            y: math::signum(self.y),
         }
     }
 
@@ -268,8 +276,8 @@ impl Vec2 {
     #[inline]
     pub fn copysign(self, rhs: Self) -> Self {
         Self {
-            x: self.x.copysign(rhs.x),
-            y: self.y.copysign(rhs.y),
+            x: math::copysign(self.x, rhs.x),
+            y: math::copysign(self.y, rhs.y),
         }
     }
 
@@ -307,7 +315,7 @@ impl Vec2 {
     #[doc(alias = "magnitude")]
     #[inline]
     pub fn length(self) -> f32 {
-        self.dot(self).sqrt()
+        math::sqrt(self.dot(self))
     }
 
     /// Computes the squared length of `self`.
@@ -339,11 +347,31 @@ impl Vec2 {
         (self - rhs).length_squared()
     }
 
+    /// Returns the element-wise quotient of [Euclidean division] of `self` by `rhs`.
+    #[inline]
+    pub fn div_euclid(self, rhs: Self) -> Self {
+        Self::new(
+            math::div_euclid(self.x, rhs.x),
+            math::div_euclid(self.y, rhs.y),
+        )
+    }
+
+    /// Returns the element-wise remainder of [Euclidean division] of `self` by `rhs`.
+    ///
+    /// [Euclidean division]: f32::rem_euclid
+    #[inline]
+    pub fn rem_euclid(self, rhs: Self) -> Self {
+        Self::new(
+            math::rem_euclid(self.x, rhs.x),
+            math::rem_euclid(self.y, rhs.y),
+        )
+    }
+
     /// Returns `self` normalized to length 1.0.
     ///
     /// For valid results, `self` must _not_ be of length zero, nor very close to zero.
     ///
-    /// See also [`Self::try_normalize`] and [`Self::normalize_or_zero`].
+    /// See also [`Self::try_normalize()`] and [`Self::normalize_or_zero()`].
     ///
     /// Panics
     ///
@@ -362,7 +390,7 @@ impl Vec2 {
     /// In particular, if the input is zero (or very close to zero), or non-finite,
     /// the result of this operation will be `None`.
     ///
-    /// See also [`Self::normalize_or_zero`].
+    /// See also [`Self::normalize_or_zero()`].
     #[must_use]
     #[inline]
     pub fn try_normalize(self) -> Option<Self> {
@@ -379,7 +407,7 @@ impl Vec2 {
     /// In particular, if the input is zero (or very close to zero), or non-finite,
     /// the result of this operation will be zero.
     ///
-    /// See also [`Self::try_normalize`].
+    /// See also [`Self::try_normalize()`].
     #[must_use]
     #[inline]
     pub fn normalize_or_zero(self) -> Self {
@@ -397,7 +425,7 @@ impl Vec2 {
     #[inline]
     pub fn is_normalized(self) -> bool {
         // TODO: do something with epsilon
-        (self.length_squared() - 1.0).abs() <= 1e-4
+        math::abs(self.length_squared() - 1.0) <= 1e-4
     }
 
     /// Returns the vector projection of `self` onto `rhs`.
@@ -466,8 +494,8 @@ impl Vec2 {
     #[inline]
     pub fn round(self) -> Self {
         Self {
-            x: self.x.round(),
-            y: self.y.round(),
+            x: math::round(self.x),
+            y: math::round(self.y),
         }
     }
 
@@ -476,8 +504,8 @@ impl Vec2 {
     #[inline]
     pub fn floor(self) -> Self {
         Self {
-            x: self.x.floor(),
-            y: self.y.floor(),
+            x: math::floor(self.x),
+            y: math::floor(self.y),
         }
     }
 
@@ -486,8 +514,18 @@ impl Vec2 {
     #[inline]
     pub fn ceil(self) -> Self {
         Self {
-            x: self.x.ceil(),
-            y: self.y.ceil(),
+            x: math::ceil(self.x),
+            y: math::ceil(self.y),
+        }
+    }
+
+    /// Returns a vector containing the integer part each element of `self`. This means numbers are
+    /// always truncated towards zero.
+    #[inline]
+    pub fn trunc(self) -> Self {
+        Self {
+            x: math::trunc(self.x),
+            y: math::trunc(self.y),
         }
     }
 
@@ -504,21 +542,21 @@ impl Vec2 {
     /// `self`.
     #[inline]
     pub fn exp(self) -> Self {
-        Self::new(self.x.exp(), self.y.exp())
+        Self::new(math::exp(self.x), math::exp(self.y))
     }
 
     /// Returns a vector containing each element of `self` raised to the power of `n`.
     #[inline]
     pub fn powf(self, n: f32) -> Self {
-        Self::new(self.x.powf(n), self.y.powf(n))
+        Self::new(math::powf(self.x, n), math::powf(self.y, n))
     }
 
     /// Returns a vector containing the reciprocal `1.0/n` of each element of `self`.
     #[inline]
     pub fn recip(self) -> Self {
         Self {
-            x: self.x.recip(),
-            y: self.y.recip(),
+            x: 1.0 / self.x,
+            y: 1.0 / self.y,
         }
     }
 
@@ -557,9 +595,9 @@ impl Vec2 {
         glam_assert!(min <= max);
         let length_sq = self.length_squared();
         if length_sq < min * min {
-            self * (length_sq.sqrt().recip() * min)
+            min * (self / math::sqrt(length_sq))
         } else if length_sq > max * max {
-            self * (length_sq.sqrt().recip() * max)
+            max * (self / math::sqrt(length_sq))
         } else {
             self
         }
@@ -569,7 +607,7 @@ impl Vec2 {
     pub fn clamp_length_max(self, max: f32) -> Self {
         let length_sq = self.length_squared();
         if length_sq > max * max {
-            self * (length_sq.sqrt().recip() * max)
+            max * (self / math::sqrt(length_sq))
         } else {
             self
         }
@@ -579,7 +617,7 @@ impl Vec2 {
     pub fn clamp_length_min(self, min: f32) -> Self {
         let length_sq = self.length_squared();
         if length_sq < min * min {
-            self * (length_sq.sqrt().recip() * min)
+            min * (self / math::sqrt(length_sq))
         } else {
             self
         }
@@ -594,28 +632,40 @@ impl Vec2 {
     /// mind.
     #[inline]
     pub fn mul_add(self, a: Self, b: Self) -> Self {
-        Self::new(self.x.mul_add(a.x, b.x), self.y.mul_add(a.y, b.y))
+        Self::new(
+            math::mul_add(self.x, a.x, b.x),
+            math::mul_add(self.y, a.y, b.y),
+        )
     }
 
     /// Creates a 2D vector containing `[angle.cos(), angle.sin()]`. This can be used in
-    /// conjunction with the `rotate` method, e.g. `Vec2::from_angle(PI).rotate(Vec2::Y)` will
-    /// create the vector [-1, 0] and rotate `Vec2::Y` around it returning `-Vec2::Y`.
+    /// conjunction with the [`rotate()`][Self::rotate()] method, e.g.
+    /// `Vec2::from_angle(PI).rotate(Vec2::Y)` will create the vector `[-1, 0]`
+    /// and rotate [`Vec2::Y`] around it returning `-Vec2::Y`.
     #[inline]
     pub fn from_angle(angle: f32) -> Self {
-        let (sin, cos) = angle.sin_cos();
+        let (sin, cos) = math::sin_cos(angle);
         Self { x: cos, y: sin }
     }
 
-    /// Returns the angle (in radians) between `self` and `rhs`.
+    /// Returns the angle (in radians) of this vector in the range `[-π, +π]`.
     ///
-    /// The input vectors do not need to be unit length however they must be non-zero.
+    /// The input does not need to be a unit vector however it must be non-zero.
+    #[inline]
+    pub fn to_angle(self) -> f32 {
+        math::atan2(self.y, self.x)
+    }
+
+    /// Returns the angle (in radians) between `self` and `rhs` in the range `[-π, +π]`.
+    ///
+    /// The inputs do not need to be unit vectors however they must be non-zero.
     #[inline]
     pub fn angle_between(self, rhs: Self) -> f32 {
-        use crate::FloatEx;
-        let angle =
-            (self.dot(rhs) / (self.length_squared() * rhs.length_squared()).sqrt()).acos_approx();
+        let angle = math::acos_approx(
+            self.dot(rhs) / math::sqrt(self.length_squared() * rhs.length_squared()),
+        );
 
-        angle * self.perp_dot(rhs).signum()
+        angle * math::signum(self.perp_dot(rhs))
     }
 
     /// Returns a vector that is equal to `self` rotated by 90 degrees.

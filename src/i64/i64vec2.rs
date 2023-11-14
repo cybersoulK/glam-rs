@@ -1,6 +1,6 @@
 // Generated from vec.rs.tera template. Edit the template, not the generated file.
 
-use crate::{BVec2, I64Vec3};
+use crate::{BVec2, I64Vec3, IVec2, U64Vec2};
 
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
@@ -34,16 +34,22 @@ impl I64Vec2 {
     /// All negative ones.
     pub const NEG_ONE: Self = Self::splat(-1);
 
-    /// A unit-length vector pointing along the positive X axis.
+    /// All `i64::MIN`.
+    pub const MIN: Self = Self::splat(i64::MIN);
+
+    /// All `i64::MAX`.
+    pub const MAX: Self = Self::splat(i64::MAX);
+
+    /// A unit vector pointing along the positive X axis.
     pub const X: Self = Self::new(1, 0);
 
-    /// A unit-length vector pointing along the positive Y axis.
+    /// A unit vector pointing along the positive Y axis.
     pub const Y: Self = Self::new(0, 1);
 
-    /// A unit-length vector pointing along the negative X axis.
+    /// A unit vector pointing along the negative X axis.
     pub const NEG_X: Self = Self::new(-1, 0);
 
-    /// A unit-length vector pointing along the negative Y axis.
+    /// A unit vector pointing along the negative Y axis.
     pub const NEG_Y: Self = Self::new(0, -1);
 
     /// The unit axes.
@@ -258,12 +264,6 @@ impl I64Vec2 {
         }
     }
 
-    /// Returns a vector with signs of `rhs` and the magnitudes of `self`.
-    #[inline]
-    pub fn copysign(self, rhs: Self) -> Self {
-        Self::select(rhs.cmpge(Self::ZERO), self, -self)
-    }
-
     /// Returns a bitmask with the lowest 2 bits set to the sign bits from the elements of `self`.
     ///
     /// A negative element results in a `1` bit and a positive element in a `0` bit.  Element `x` goes
@@ -284,6 +284,26 @@ impl I64Vec2 {
     #[inline]
     pub fn distance_squared(self, rhs: Self) -> i64 {
         (self - rhs).length_squared()
+    }
+
+    /// Returns the element-wise quotient of [Euclidean division] of `self` by `rhs`.
+    ///
+    /// # Panics
+    /// This function will panic if any `rhs` element is 0 or the division results in overflow.
+    #[inline]
+    pub fn div_euclid(self, rhs: Self) -> Self {
+        Self::new(self.x.div_euclid(rhs.x), self.y.div_euclid(rhs.y))
+    }
+
+    /// Returns the element-wise remainder of [Euclidean division] of `self` by `rhs`.
+    ///
+    /// # Panics
+    /// This function will panic if any `rhs` element is 0 or the division results in overflow.
+    ///
+    /// [Euclidean division]: i64::rem_euclid
+    #[inline]
+    pub fn rem_euclid(self, rhs: Self) -> Self {
+        Self::new(self.x.rem_euclid(rhs.x), self.y.rem_euclid(rhs.y))
     }
 
     /// Returns a vector that is equal to `self` rotated by 90 degrees.
@@ -345,6 +365,102 @@ impl I64Vec2 {
     #[inline]
     pub fn as_u64vec2(&self) -> crate::U64Vec2 {
         crate::U64Vec2::new(self.x as u64, self.y as u64)
+    }
+
+    /// Returns a vector containing the wrapping addition of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.wrapping_add(rhs.x), self.y.wrapping_add(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn wrapping_add(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.wrapping_add(rhs.x),
+            y: self.y.wrapping_add(rhs.y),
+        }
+    }
+
+    /// Returns a vector containing the wrapping subtraction of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.wrapping_sub(rhs.x), self.y.wrapping_sub(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn wrapping_sub(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.wrapping_sub(rhs.x),
+            y: self.y.wrapping_sub(rhs.y),
+        }
+    }
+
+    /// Returns a vector containing the wrapping multiplication of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.wrapping_mul(rhs.x), self.y.wrapping_mul(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn wrapping_mul(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.wrapping_mul(rhs.x),
+            y: self.y.wrapping_mul(rhs.y),
+        }
+    }
+
+    /// Returns a vector containing the wrapping division of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.wrapping_div(rhs.x), self.y.wrapping_div(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn wrapping_div(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.wrapping_div(rhs.x),
+            y: self.y.wrapping_div(rhs.y),
+        }
+    }
+
+    /// Returns a vector containing the saturating addition of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.saturating_add(rhs.x), self.y.saturating_add(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn saturating_add(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.saturating_add(rhs.x),
+            y: self.y.saturating_add(rhs.y),
+        }
+    }
+
+    /// Returns a vector containing the saturating subtraction of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.saturating_sub(rhs.x), self.y.saturating_sub(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn saturating_sub(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.saturating_sub(rhs.x),
+            y: self.y.saturating_sub(rhs.y),
+        }
+    }
+
+    /// Returns a vector containing the saturating multiplication of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.saturating_mul(rhs.x), self.y.saturating_mul(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn saturating_mul(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.saturating_mul(rhs.x),
+            y: self.y.saturating_mul(rhs.y),
+        }
+    }
+
+    /// Returns a vector containing the saturating division of `self` and `rhs`.
+    ///
+    /// In other words this computes `[self.x.saturating_div(rhs.x), self.y.saturating_div(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn saturating_div(self, rhs: Self) -> Self {
+        Self {
+            x: self.x.saturating_div(rhs.x),
+            y: self.y.saturating_div(rhs.y),
+        }
     }
 }
 
@@ -1029,5 +1145,21 @@ impl From<I64Vec2> for (i64, i64) {
     #[inline]
     fn from(v: I64Vec2) -> Self {
         (v.x, v.y)
+    }
+}
+
+impl From<IVec2> for I64Vec2 {
+    #[inline]
+    fn from(v: IVec2) -> Self {
+        Self::new(i64::from(v.x), i64::from(v.y))
+    }
+}
+
+impl TryFrom<U64Vec2> for I64Vec2 {
+    type Error = core::num::TryFromIntError;
+
+    #[inline]
+    fn try_from(v: U64Vec2) -> Result<Self, Self::Error> {
+        Ok(Self::new(i64::try_from(v.x)?, i64::try_from(v.y)?))
     }
 }

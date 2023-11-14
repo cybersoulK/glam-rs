@@ -1,7 +1,7 @@
 // Generated from affine.rs.tera template. Edit the template, not the generated file.
 
 use crate::{DMat2, DMat3, DVec2};
-use core::ops::{Deref, DerefMut, Mul};
+use core::ops::{Deref, DerefMut, Mul, MulAssign};
 
 /// A 2D affine transform, which can represent translation, rotation, scaling and shear.
 #[derive(Copy, Clone)]
@@ -196,6 +196,33 @@ impl DAffine2 {
         }
     }
 
+    /// Extracts `scale`, `angle` and `translation` from `self`.
+    ///
+    /// The transform is expected to be non-degenerate and without shearing, or the output
+    /// will be invalid.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the determinant `self.matrix2` is zero or if the resulting scale
+    /// vector contains any zero elements when `glam_assert` is enabled.
+    #[inline]
+    pub fn to_scale_angle_translation(self) -> (DVec2, f64, DVec2) {
+        use crate::f64::math;
+        let det = self.matrix2.determinant();
+        glam_assert!(det != 0.0);
+
+        let scale = DVec2::new(
+            self.matrix2.x_axis.length() * math::signum(det),
+            self.matrix2.y_axis.length(),
+        );
+
+        glam_assert!(scale.cmpne(DVec2::ZERO).all());
+
+        let angle = math::atan2(-self.matrix2.y_axis.x, self.matrix2.y_axis.y);
+
+        (scale, angle, self.translation)
+    }
+
     /// Transforms the given 2D point, applying shear, scale, rotation and translation.
     #[inline]
     pub fn transform_point2(&self, rhs: DVec2) -> DVec2 {
@@ -205,7 +232,7 @@ impl DAffine2 {
     /// Transforms the given 2D vector, applying shear, scale and rotation (but NOT
     /// translation).
     ///
-    /// To also apply translation, use [`Self::transform_point2`] instead.
+    /// To also apply translation, use [`Self::transform_point2()`] instead.
     #[inline]
     pub fn transform_vector2(&self, rhs: DVec2) -> DVec2 {
         self.matrix2 * rhs
@@ -326,6 +353,13 @@ impl Mul for DAffine2 {
             matrix2: self.matrix2 * rhs.matrix2,
             translation: self.matrix2 * rhs.translation + self.translation,
         }
+    }
+}
+
+impl MulAssign for DAffine2 {
+    #[inline]
+    fn mul_assign(&mut self, rhs: DAffine2) {
+        *self = self.mul(rhs);
     }
 }
 

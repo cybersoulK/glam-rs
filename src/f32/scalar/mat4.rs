@@ -1,16 +1,12 @@
 // Generated from mat.rs.tera template. Edit the template, not the generated file.
 
-use crate::{swizzles::*, DMat4, EulerRot, Mat3, Mat3A, Quat, Vec3, Vec3A, Vec4};
+use crate::{f32::math, swizzles::*, DMat4, EulerRot, Mat3, Mat3A, Quat, Vec3, Vec3A, Vec4};
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-#[cfg(feature = "libm")]
-#[allow(unused_imports)]
-use num_traits::Float;
-
-/// Creates a 4x4 matrix from column vectors.
+/// Creates a 4x4 matrix from four column vectors.
 #[inline(always)]
 pub const fn mat4(x_axis: Vec4, y_axis: Vec4, z_axis: Vec4, w_axis: Vec4) -> Mat4 {
     Mat4::from_cols(x_axis, y_axis, z_axis, w_axis)
@@ -27,7 +23,7 @@ pub const fn mat4(x_axis: Vec4, y_axis: Vec4, z_axis: Vec4, w_axis: Vec4) -> Mat
 /// using methods such as [`Self::from_translation()`], [`Self::from_quat()`],
 /// [`Self::from_scale()`] and [`Self::from_scale_rotation_translation()`].
 ///
-/// Othographic projections can be created using the methods [`Self::orthographic_lh()`] for
+/// Orthographic projections can be created using the methods [`Self::orthographic_lh()`] for
 /// left-handed coordinate systems and [`Self::orthographic_rh()`] for right-handed
 /// systems. The resulting matrix is also an affine transformation.
 ///
@@ -99,7 +95,7 @@ impl Mat4 {
         }
     }
 
-    /// Creates a 4x4 matrix from two column vectors.
+    /// Creates a 4x4 matrix from four column vectors.
     #[inline(always)]
     pub const fn from_cols(x_axis: Vec4, y_axis: Vec4, z_axis: Vec4, w_axis: Vec4) -> Self {
         Self {
@@ -251,7 +247,7 @@ impl Mat4 {
         glam_assert!(det != 0.0);
 
         let scale = Vec3::new(
-            self.x_axis.length() * det.signum(),
+            self.x_axis.length() * math::signum(det),
             self.y_axis.length(),
             self.z_axis.length(),
         );
@@ -342,7 +338,7 @@ impl Mat4 {
     pub fn from_axis_angle(axis: Vec3, angle: f32) -> Self {
         glam_assert!(axis.is_normalized());
 
-        let (sin, cos) = angle.sin_cos();
+        let (sin, cos) = math::sin_cos(angle);
         let axis_sin = axis.mul(sin);
         let axis_sq = axis.mul(axis);
         let omc = 1.0 - cos;
@@ -390,7 +386,7 @@ impl Mat4 {
     /// [`Self::transform_point3()`] and [`Self::transform_vector3()`].
     #[inline]
     pub fn from_rotation_x(angle: f32) -> Self {
-        let (sina, cosa) = angle.sin_cos();
+        let (sina, cosa) = math::sin_cos(angle);
         Self::from_cols(
             Vec4::X,
             Vec4::new(0.0, cosa, sina, 0.0),
@@ -406,7 +402,7 @@ impl Mat4 {
     /// [`Self::transform_point3()`] and [`Self::transform_vector3()`].
     #[inline]
     pub fn from_rotation_y(angle: f32) -> Self {
-        let (sina, cosa) = angle.sin_cos();
+        let (sina, cosa) = math::sin_cos(angle);
         Self::from_cols(
             Vec4::new(cosa, 0.0, -sina, 0.0),
             Vec4::Y,
@@ -422,7 +418,7 @@ impl Mat4 {
     /// [`Self::transform_point3()`] and [`Self::transform_vector3()`].
     #[inline]
     pub fn from_rotation_z(angle: f32) -> Self {
-        let (sina, cosa) = angle.sin_cos();
+        let (sina, cosa) = math::sin_cos(angle);
         Self::from_cols(
             Vec4::new(cosa, sina, 0.0, 0.0),
             Vec4::new(-sina, cosa, 0.0, 0.0),
@@ -731,7 +727,7 @@ impl Mat4 {
         z_far: f32,
     ) -> Self {
         let inv_length = 1.0 / (z_near - z_far);
-        let f = 1.0 / (0.5 * fov_y_radians).tan();
+        let f = 1.0 / math::tan(0.5 * fov_y_radians);
         let a = f / aspect_ratio;
         let b = (z_near + z_far) * inv_length;
         let c = (2.0 * z_near * z_far) * inv_length;
@@ -752,7 +748,7 @@ impl Mat4 {
     #[inline]
     pub fn perspective_lh(fov_y_radians: f32, aspect_ratio: f32, z_near: f32, z_far: f32) -> Self {
         glam_assert!(z_near > 0.0 && z_far > 0.0);
-        let (sin_fov, cos_fov) = (0.5 * fov_y_radians).sin_cos();
+        let (sin_fov, cos_fov) = math::sin_cos(0.5 * fov_y_radians);
         let h = cos_fov / sin_fov;
         let w = h / aspect_ratio;
         let r = z_far / (z_far - z_near);
@@ -773,7 +769,7 @@ impl Mat4 {
     #[inline]
     pub fn perspective_rh(fov_y_radians: f32, aspect_ratio: f32, z_near: f32, z_far: f32) -> Self {
         glam_assert!(z_near > 0.0 && z_far > 0.0);
-        let (sin_fov, cos_fov) = (0.5 * fov_y_radians).sin_cos();
+        let (sin_fov, cos_fov) = math::sin_cos(0.5 * fov_y_radians);
         let h = cos_fov / sin_fov;
         let w = h / aspect_ratio;
         let r = z_far / (z_near - z_far);
@@ -793,7 +789,7 @@ impl Mat4 {
     #[inline]
     pub fn perspective_infinite_lh(fov_y_radians: f32, aspect_ratio: f32, z_near: f32) -> Self {
         glam_assert!(z_near > 0.0);
-        let (sin_fov, cos_fov) = (0.5 * fov_y_radians).sin_cos();
+        let (sin_fov, cos_fov) = math::sin_cos(0.5 * fov_y_radians);
         let h = cos_fov / sin_fov;
         let w = h / aspect_ratio;
         Self::from_cols(
@@ -816,7 +812,7 @@ impl Mat4 {
         z_near: f32,
     ) -> Self {
         glam_assert!(z_near > 0.0);
-        let (sin_fov, cos_fov) = (0.5 * fov_y_radians).sin_cos();
+        let (sin_fov, cos_fov) = math::sin_cos(0.5 * fov_y_radians);
         let h = cos_fov / sin_fov;
         let w = h / aspect_ratio;
         Self::from_cols(
@@ -832,7 +828,7 @@ impl Mat4 {
     #[inline]
     pub fn perspective_infinite_rh(fov_y_radians: f32, aspect_ratio: f32, z_near: f32) -> Self {
         glam_assert!(z_near > 0.0);
-        let f = 1.0 / (0.5 * fov_y_radians).tan();
+        let f = 1.0 / math::tan(0.5 * fov_y_radians);
         Self::from_cols(
             Vec4::new(f / aspect_ratio, 0.0, 0.0, 0.0),
             Vec4::new(0.0, f, 0.0, 0.0),
@@ -850,7 +846,7 @@ impl Mat4 {
         z_near: f32,
     ) -> Self {
         glam_assert!(z_near > 0.0);
-        let f = 1.0 / (0.5 * fov_y_radians).tan();
+        let f = 1.0 / math::tan(0.5 * fov_y_radians);
         Self::from_cols(
             Vec4::new(f / aspect_ratio, 0.0, 0.0, 0.0),
             Vec4::new(0.0, f, 0.0, 0.0),
@@ -996,17 +992,17 @@ impl Mat4 {
         res.xyz()
     }
 
-    /// Transforms the given `Vec3A` as 3D point.
+    /// Transforms the given [`Vec3A`] as 3D point.
     ///
-    /// This is the equivalent of multiplying the `Vec3A` as a 4D vector where `w` is `1.0`.
+    /// This is the equivalent of multiplying the [`Vec3A`] as a 4D vector where `w` is `1.0`.
     #[inline]
     pub fn transform_point3a(&self, rhs: Vec3A) -> Vec3A {
         self.transform_point3(rhs.into()).into()
     }
 
-    /// Transforms the give `Vec3A` as 3D vector.
+    /// Transforms the give [`Vec3A`] as 3D vector.
     ///
-    /// This is the equivalent of multiplying the `Vec3A` as a 4D vector where `w` is `0.0`.
+    /// This is the equivalent of multiplying the [`Vec3A`] as a 4D vector where `w` is `0.0`.
     #[inline]
     pub fn transform_vector3a(&self, rhs: Vec3A) -> Vec3A {
         self.transform_vector3(rhs.into()).into()

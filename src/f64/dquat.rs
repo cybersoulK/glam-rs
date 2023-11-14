@@ -2,12 +2,9 @@
 
 use crate::{
     euler::{EulerFromQuaternion, EulerRot, EulerToQuaternion},
-    DMat3, DMat4, DVec2, DVec3, DVec4, FloatEx, Quat,
+    f64::math,
+    DMat3, DMat4, DVec2, DVec3, DVec4, Quat,
 };
-
-#[cfg(feature = "libm")]
-#[allow(unused_imports)]
-use num_traits::Float;
 
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
@@ -120,7 +117,8 @@ impl DQuat {
     }
 
     /// Create a quaternion for a normalized rotation `axis` and `angle` (in radians).
-    /// The axis must be normalized (unit-length).
+    ///
+    /// The axis must be a unit vector.
     ///
     /// # Panics
     ///
@@ -128,7 +126,7 @@ impl DQuat {
     #[inline]
     pub fn from_axis_angle(axis: DVec3, angle: f64) -> Self {
         glam_assert!(axis.is_normalized());
-        let (s, c) = (angle * 0.5).sin_cos();
+        let (s, c) = math::sin_cos(angle * 0.5);
         let v = axis * s;
         Self::from_xyzw(v.x, v.y, v.z, c)
     }
@@ -149,21 +147,21 @@ impl DQuat {
     /// Creates a quaternion from the `angle` (in radians) around the x axis.
     #[inline]
     pub fn from_rotation_x(angle: f64) -> Self {
-        let (s, c) = (angle * 0.5).sin_cos();
+        let (s, c) = math::sin_cos(angle * 0.5);
         Self::from_xyzw(s, 0.0, 0.0, c)
     }
 
     /// Creates a quaternion from the `angle` (in radians) around the y axis.
     #[inline]
     pub fn from_rotation_y(angle: f64) -> Self {
-        let (s, c) = (angle * 0.5).sin_cos();
+        let (s, c) = math::sin_cos(angle * 0.5);
         Self::from_xyzw(0.0, s, 0.0, c)
     }
 
     /// Creates a quaternion from the `angle` (in radians) around the z axis.
     #[inline]
     pub fn from_rotation_z(angle: f64) -> Self {
-        let (s, c) = (angle * 0.5).sin_cos();
+        let (s, c) = math::sin_cos(angle * 0.5);
         Self::from_xyzw(0.0, 0.0, s, c)
     }
 
@@ -187,7 +185,7 @@ impl DQuat {
             if dif10 <= 0.0 {
                 // x^2 >= y^2
                 let four_xsq = omm22 - dif10;
-                let inv4x = 0.5 / four_xsq.sqrt();
+                let inv4x = 0.5 / math::sqrt(four_xsq);
                 Self::from_xyzw(
                     four_xsq * inv4x,
                     (m01 + m10) * inv4x,
@@ -197,7 +195,7 @@ impl DQuat {
             } else {
                 // y^2 >= x^2
                 let four_ysq = omm22 + dif10;
-                let inv4y = 0.5 / four_ysq.sqrt();
+                let inv4y = 0.5 / math::sqrt(four_ysq);
                 Self::from_xyzw(
                     (m01 + m10) * inv4y,
                     four_ysq * inv4y,
@@ -212,7 +210,7 @@ impl DQuat {
             if sum10 <= 0.0 {
                 // z^2 >= w^2
                 let four_zsq = opm22 - sum10;
-                let inv4z = 0.5 / four_zsq.sqrt();
+                let inv4z = 0.5 / math::sqrt(four_zsq);
                 Self::from_xyzw(
                     (m02 + m20) * inv4z,
                     (m12 + m21) * inv4z,
@@ -222,7 +220,7 @@ impl DQuat {
             } else {
                 // w^2 >= z^2
                 let four_wsq = opm22 + sum10;
-                let inv4w = 0.5 / four_wsq.sqrt();
+                let inv4w = 0.5 / math::sqrt(four_wsq);
                 Self::from_xyzw(
                     (m12 - m21) * inv4w,
                     (m20 - m02) * inv4w,
@@ -252,7 +250,7 @@ impl DQuat {
     /// Gets the minimal rotation for transforming `from` to `to`.  The rotation is in the
     /// plane spanned by the two vectors.  Will rotate at most 180 degrees.
     ///
-    /// The input vectors must be normalized (unit-length).
+    /// The inputs must be unit vectors.
     ///
     /// `from_rotation_arc(from, to) * from ≈ to`.
     ///
@@ -287,7 +285,7 @@ impl DQuat {
     /// The rotation is in the plane spanned by the two vectors.  Will rotate at most 90
     /// degrees.
     ///
-    /// The input vectors must be normalized (unit-length).
+    /// The inputs must be unit vectors.
     ///
     /// `to.dot(from_rotation_arc_colinear(from, to) * from).abs() ≈ 1`.
     ///
@@ -306,7 +304,7 @@ impl DQuat {
     /// Gets the minimal rotation for transforming `from` to `to`.  The resulting rotation is
     /// around the z axis. Will rotate at most 180 degrees.
     ///
-    /// The input vectors must be normalized (unit-length).
+    /// The inputs must be unit vectors.
     ///
     /// `from_rotation_arc_2d(from, to) * from ≈ to`.
     ///
@@ -336,7 +334,7 @@ impl DQuat {
             let z = from.x * to.y - to.x * from.y;
             let w = 1.0 + dot;
             // calculate length with x=0 and y=0 to normalize
-            let len_rcp = 1.0 / (z * z + w * w).sqrt();
+            let len_rcp = 1.0 / math::sqrt(z * z + w * w);
             Self::from_xyzw(0.0, 0.0, z * len_rcp, w * len_rcp)
         }
     }
@@ -348,7 +346,7 @@ impl DQuat {
         let v = DVec3::new(self.x, self.y, self.z);
         let length = v.length();
         if length >= EPSILON {
-            let angle = 2.0 * f64::atan2(length, self.w);
+            let angle = 2.0 * math::atan2(length, self.w);
             let axis = v / length;
             (axis, angle)
         } else {
@@ -492,7 +490,7 @@ impl DQuat {
         // If the quat.w is close to -1.0, the angle will be near 2*PI which is close to
         // a negative 0 rotation. By forcing quat.w to be positive, we'll end up with
         // the shortest path.
-        let positive_w_angle = self.w.abs().acos_approx() * 2.0;
+        let positive_w_angle = math::acos_approx(math::abs(self.w)) * 2.0;
         positive_w_angle < threshold_angle
     }
 
@@ -507,7 +505,7 @@ impl DQuat {
     #[inline]
     pub fn angle_between(self, rhs: Self) -> f64 {
         glam_assert!(self.is_normalized() && rhs.is_normalized());
-        self.dot(rhs).abs().acos_approx() * 2.0
+        math::acos_approx(math::abs(self.dot(rhs))) * 2.0
     }
 
     /// Returns true if the absolute difference of all elements between `self` and `rhs`
@@ -579,13 +577,13 @@ impl DQuat {
             // assumes lerp returns a normalized quaternion
             self.lerp(end, s)
         } else {
-            let theta = dot.acos_approx();
+            let theta = math::acos_approx(dot);
 
-            let scale1 = (theta * (1.0 - s)).sin();
-            let scale2 = (theta * s).sin();
-            let theta_sin = theta.sin();
+            let scale1 = math::sin(theta * (1.0 - s));
+            let scale2 = math::sin(theta * s);
+            let theta_sin = math::sin(theta);
 
-            self.mul(scale1).add(end.mul(scale2)).mul(theta_sin.recip())
+            self.mul(scale1).add(end.mul(scale2)).mul(1.0 / theta_sin)
         }
     }
 

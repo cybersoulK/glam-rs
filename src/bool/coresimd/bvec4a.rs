@@ -6,6 +6,7 @@ use core::ops::*;
 
 use core::simd::*;
 
+#[repr(C)]
 union UnionCast {
     a: [u32; 4],
     v: BVec4A,
@@ -68,6 +69,22 @@ impl BVec4A {
     #[inline]
     pub fn all(self) -> bool {
         self.bitmask() == 0xf
+    }
+
+    /// Tests the value at `index`.
+    ///
+    /// Panics if `index` is greater than 3.
+    #[inline]
+    pub fn test(&self, index: usize) -> bool {
+        self.0.test(index)
+    }
+
+    /// Sets the element at `index`.
+    ///
+    /// Panics if `index` is greater than 3.
+    #[inline]
+    pub fn set(&mut self, index: usize, value: bool) {
+        self.0.set(index, value)
     }
 
     #[inline]

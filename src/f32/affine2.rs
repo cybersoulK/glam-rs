@@ -1,7 +1,7 @@
 // Generated from affine.rs.tera template. Edit the template, not the generated file.
 
 use crate::{Mat2, Mat3, Mat3A, Vec2, Vec3A};
-use core::ops::{Deref, DerefMut, Mul};
+use core::ops::{Deref, DerefMut, Mul, MulAssign};
 
 /// A 2D affine transform, which can represent translation, rotation, scaling and shear.
 #[derive(Copy, Clone)]
@@ -196,7 +196,7 @@ impl Affine2 {
         }
     }
 
-    /// The given `Mat3A` must be an affine transform,
+    /// The given [`Mat3A`] must be an affine transform,
     #[inline]
     pub fn from_mat3a(m: Mat3A) -> Self {
         use crate::swizzles::Vec3Swizzles;
@@ -204,6 +204,33 @@ impl Affine2 {
             matrix2: Mat2::from_cols(m.x_axis.xy(), m.y_axis.xy()),
             translation: m.z_axis.xy(),
         }
+    }
+
+    /// Extracts `scale`, `angle` and `translation` from `self`.
+    ///
+    /// The transform is expected to be non-degenerate and without shearing, or the output
+    /// will be invalid.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the determinant `self.matrix2` is zero or if the resulting scale
+    /// vector contains any zero elements when `glam_assert` is enabled.
+    #[inline]
+    pub fn to_scale_angle_translation(self) -> (Vec2, f32, Vec2) {
+        use crate::f32::math;
+        let det = self.matrix2.determinant();
+        glam_assert!(det != 0.0);
+
+        let scale = Vec2::new(
+            self.matrix2.x_axis.length() * math::signum(det),
+            self.matrix2.y_axis.length(),
+        );
+
+        glam_assert!(scale.cmpne(Vec2::ZERO).all());
+
+        let angle = math::atan2(-self.matrix2.y_axis.x, self.matrix2.y_axis.y);
+
+        (scale, angle, self.translation)
     }
 
     /// Transforms the given 2D point, applying shear, scale, rotation and translation.
@@ -215,7 +242,7 @@ impl Affine2 {
     /// Transforms the given 2D vector, applying shear, scale and rotation (but NOT
     /// translation).
     ///
-    /// To also apply translation, use [`Self::transform_point2`] instead.
+    /// To also apply translation, use [`Self::transform_point2()`] instead.
     #[inline]
     pub fn transform_vector2(&self, rhs: Vec2) -> Vec2 {
         self.matrix2 * rhs
@@ -336,6 +363,13 @@ impl Mul for Affine2 {
             matrix2: self.matrix2 * rhs.matrix2,
             translation: self.matrix2 * rhs.translation + self.translation,
         }
+    }
+}
+
+impl MulAssign for Affine2 {
+    #[inline]
+    fn mul_assign(&mut self, rhs: Affine2) {
+        *self = self.mul(rhs);
     }
 }
 

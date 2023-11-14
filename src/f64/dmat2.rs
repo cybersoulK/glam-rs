@@ -1,16 +1,12 @@
 // Generated from mat.rs.tera template. Edit the template, not the generated file.
 
-use crate::{swizzles::*, DMat3, DVec2, Mat2};
+use crate::{f64::math, swizzles::*, DMat3, DVec2, Mat2};
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
 use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-#[cfg(feature = "libm")]
-#[allow(unused_imports)]
-use num_traits::Float;
-
-/// Creates a 2x2 matrix from column vectors.
+/// Creates a 2x2 matrix from two column vectors.
 #[inline(always)]
 pub const fn dmat2(x_axis: DVec2, y_axis: DVec2) -> DMat2 {
     DMat2::from_cols(x_axis, y_axis)
@@ -91,14 +87,14 @@ impl DMat2 {
     /// `angle` (in radians).
     #[inline]
     pub fn from_scale_angle(scale: DVec2, angle: f64) -> Self {
-        let (sin, cos) = angle.sin_cos();
+        let (sin, cos) = math::sin_cos(angle);
         Self::new(cos * scale.x, sin * scale.x, -sin * scale.y, cos * scale.y)
     }
 
     /// Creates a 2x2 matrix containing a rotation of `angle` (in radians).
     #[inline]
     pub fn from_angle(angle: f64) -> Self {
-        let (sin, cos) = angle.sin_cos();
+        let (sin, cos) = math::sin_cos(angle);
         Self::new(cos, sin, -sin, cos)
     }
 

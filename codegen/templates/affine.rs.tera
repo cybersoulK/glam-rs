@@ -47,7 +47,7 @@ use crate::{
     {{ mat_t }}, {{ col_t}}, {{ mat4_t }}, {{ quat_t }},
 {% endif %}
 };
-use core::ops::{Deref, DerefMut, Mul};
+use core::ops::{Deref, DerefMut, Mul, MulAssign};
 
 /// A {{ dim }}D affine transform, which can represent translation, rotation, scaling and shear.
 {%- if is_align %}
@@ -275,7 +275,7 @@ impl {{ self_t }} {
     }
 
 {% if scalar_t == "f32" %}
-    /// The given `Mat3A` must be an affine transform,
+    /// The given [`Mat3A`] must be an affine transform,
     #[inline]
     pub fn from_mat3a(m: Mat3A) -> Self {
         use crate::swizzles::Vec3Swizzles;
@@ -286,6 +286,33 @@ impl {{ self_t }} {
     }
 {% endif %}
 
+    /// Extracts `scale`, `angle` and `translation` from `self`.
+    ///
+    /// The transform is expected to be non-degenerate and without shearing, or the output
+    /// will be invalid.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the determinant `self.matrix2` is zero or if the resulting scale
+    /// vector contains any zero elements when `glam_assert` is enabled.
+    #[inline]
+    pub fn to_scale_angle_translation(self) -> ({{ vec2_t }}, {{ scalar_t }}, {{ vec2_t }}) {
+        use crate::{{ scalar_t }}::math;
+        let det = self.matrix2.determinant();
+        glam_assert!(det != 0.0);
+
+        let scale = {{ col_t }}::new(
+            self.matrix2.x_axis.length() * math::signum(det),
+            self.matrix2.y_axis.length(),
+        );
+
+        glam_assert!(scale.cmpne({{ col_t }}::ZERO).all());
+
+        let angle = math::atan2(-self.matrix2.y_axis.x, self.matrix2.y_axis.y);
+
+        (scale, angle, self.translation)
+    }
+
     /// Transforms the given 2D point, applying shear, scale, rotation and translation.
     #[inline]
     pub fn transform_point2(&self, rhs: {{ vec2_t }}) -> {{ vec2_t }} {
@@ -295,7 +322,7 @@ impl {{ self_t }} {
     /// Transforms the given 2D vector, applying shear, scale and rotation (but NOT
     /// translation).
     ///
-    /// To also apply translation, use [`Self::transform_point2`] instead.
+    /// To also apply translation, use [`Self::transform_point2()`] instead.
     #[inline]
     pub fn transform_vector2(&self, rhs: {{ vec2_t }}) -> {{ vec2_t }} {
         self.matrix2 * rhs
@@ -454,15 +481,12 @@ impl {{ self_t }} {
     /// vector contains any zero elements when `glam_assert` is enabled.
     #[inline]
     pub fn to_scale_rotation_translation(&self) -> ({{ vec3_t }}, {{ quat_t }}, {{ vec3_t }}) {
-        #[cfg(feature = "libm")]
-        #[allow(unused_imports)]
-        use num_traits::Float;
-
+        use crate::{{ scalar_t }}::math;
         let det = self.matrix3.determinant();
         glam_assert!(det != 0.0);
 
         let scale = {{ vec3_t }}::new(
-            self.matrix3.x_axis.length() * det.signum(),
+            self.matrix3.x_axis.length() * math::signum(det),
             self.matrix3.y_axis.length(),
             self.matrix3.z_axis.length(),
         );
@@ -551,7 +575,7 @@ impl {{ self_t }} {
     /// Transforms the given 3D vector, applying shear, scale and rotation (but NOT
     /// translation).
     ///
-    /// To also apply translation, use [`Self::transform_point3`] instead.
+    /// To also apply translation, use [`Self::transform_point3()`] instead.
     #[inline]
     pub fn transform_vector3(&self, rhs: {{ vec3_t }}) -> {{ vec3_t }} {
         #[allow(clippy::useless_conversion)]
@@ -563,16 +587,16 @@ impl {{ self_t }} {
 {% endif %}
 
 {% if self_t == "Affine3A" %}
-    /// Transforms the given `Vec3A`, applying shear, scale, rotation and translation.
+    /// Transforms the given [`Vec3A`], applying shear, scale, rotation and translation.
     #[inline]
     pub fn transform_point3a(&self, rhs: Vec3A) -> Vec3A {
         self.matrix3 * rhs + self.translation
     }
 
-    /// Transforms the given `Vec3A`, applying shear, scale and rotation (but NOT
+    /// Transforms the given [`Vec3A`], applying shear, scale and rotation (but NOT
     /// translation).
     ///
-    /// To also apply translation, use [`Self::transform_point3a`] instead.
+    /// To also apply translation, use [`Self::transform_point3a()`] instead.
     #[inline]
     pub fn transform_vector3a(&self, rhs: Vec3A) -> Vec3A {
         self.matrix3 * rhs
@@ -700,6 +724,13 @@ impl Mul for {{ self_t }} {
             matrix{{ dim }}: self.matrix{{ dim }} * rhs.matrix{{ dim }},
             translation: self.matrix{{ dim }} * rhs.translation + self.translation,
         }
+    }
+}
+
+impl MulAssign for {{ self_t }} {
+    #[inline]
+    fn mul_assign(&mut self, rhs: {{ self_t }}) {
+        *self = self.mul(rhs);
     }
 }
 

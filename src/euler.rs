@@ -4,11 +4,7 @@ Conversion from quaternions to Euler rotation sequences.
 From: http://bediyap.com/programming/convert-quaternion-to-euler-rotations/
 */
 
-use super::{DQuat, Quat};
-
-#[cfg(feature = "libm")]
-#[allow(unused_imports)]
-use num_traits::Float;
+use crate::{DQuat, Quat};
 
 /// Euler rotation sequences.
 ///
@@ -50,9 +46,10 @@ pub(crate) trait EulerFromQuaternion<Q: Copy>: Sized + Copy {
     fn third(self, q: Q) -> Self::Output;
 
     /// Compute all angles of a rotation in the notation order
-    fn convert_quat(self, q: Q) -> (Self::Output, Self::Output, Self::Output) {
-        (self.first(q), self.second(q), self.third(q))
-    }
+    fn convert_quat(self, q: Q) -> (Self::Output, Self::Output, Self::Output);
+
+    #[doc(hidden)]
+    fn sine_theta(self, q: Q) -> Self::Output;
 }
 
 /// Conversion from euler angles to quaternion.
@@ -62,80 +59,185 @@ pub(crate) trait EulerToQuaternion<T>: Copy {
     fn new_quat(self, u: T, v: T, w: T) -> Self::Output;
 }
 
-/// Adds a atan2 that handles the negative zero case.
-/// Basically forces positive zero in the x-argument for atan2.
-pub(crate) trait Atan2Fixed<T = Self> {
-    fn atan2_fixed(self, other: T) -> T;
-}
-
-impl Atan2Fixed for f32 {
-    fn atan2_fixed(self, other: f32) -> f32 {
-        self.atan2(if other == 0.0f32 { 0.0f32 } else { other })
-    }
-}
-impl Atan2Fixed for f64 {
-    fn atan2_fixed(self, other: f64) -> f64 {
-        self.atan2(if other == 0.0f64 { 0.0f64 } else { other })
-    }
-}
-
 macro_rules! impl_from_quat {
-    ($t:ty, $quat:ident) => {
+    ($t:ident, $quat:ident) => {
         impl EulerFromQuaternion<$quat> for EulerRot {
             type Output = $t;
-            fn first(self, q: $quat) -> $t {
+
+            fn sine_theta(self, q: $quat) -> $t {
                 use EulerRot::*;
                 match self {
-                    ZYX => (2.0 * (q.x * q.y + q.w * q.z))
-                        .atan2(q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z),
-                    ZXY => (-2.0 * (q.x * q.y - q.w * q.z))
-                        .atan2(q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z),
-                    YXZ => (2.0 * (q.x * q.z + q.w * q.y))
-                        .atan2(q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z),
-                    YZX => (-2.0 * (q.x * q.z - q.w * q.y))
-                        .atan2(q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z),
-                    XYZ => (-2.0 * (q.y * q.z - q.w * q.x))
-                        .atan2(q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z),
-                    XZY => (2.0 * (q.y * q.z + q.w * q.x))
-                        .atan2(q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z),
+                    ZYX => -2.0 * (q.x * q.z - q.w * q.y),
+                    ZXY => 2.0 * (q.y * q.z + q.w * q.x),
+                    YXZ => -2.0 * (q.y * q.z - q.w * q.x),
+                    YZX => 2.0 * (q.x * q.y + q.w * q.z),
+                    XYZ => 2.0 * (q.x * q.z + q.w * q.y),
+                    XZY => -2.0 * (q.x * q.y - q.w * q.z),
+                }
+                .clamp(-1.0, 1.0)
+            }
+
+            fn first(self, q: $quat) -> $t {
+                use crate::$t::math;
+                use EulerRot::*;
+
+                let sine_theta = self.sine_theta(q);
+                if math::abs(sine_theta) > 0.99999 {
+                    let scale = 2.0 * math::signum(sine_theta);
+
+                    match self {
+                        ZYX => scale * math::atan2(-q.x, q.w),
+                        ZXY => scale * math::atan2(q.y, q.w),
+                        YXZ => scale * math::atan2(-q.z, q.w),
+                        YZX => scale * math::atan2(q.x, q.w),
+                        XYZ => scale * math::atan2(q.z, q.w),
+                        XZY => scale * math::atan2(-q.y, q.w),
+                    }
+                } else {
+                    match self {
+                        ZYX => math::atan2(
+                            2.0 * (q.x * q.y + q.w * q.z),
+                            q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z,
+                        ),
+                        ZXY => math::atan2(
+                            -2.0 * (q.x * q.y - q.w * q.z),
+                            q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z,
+                        ),
+                        YXZ => math::atan2(
+                            2.0 * (q.x * q.z + q.w * q.y),
+                            q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z,
+                        ),
+                        YZX => math::atan2(
+                            -2.0 * (q.x * q.z - q.w * q.y),
+                            q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z,
+                        ),
+                        XYZ => math::atan2(
+                            -2.0 * (q.y * q.z - q.w * q.x),
+                            q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z,
+                        ),
+                        XZY => math::atan2(
+                            2.0 * (q.y * q.z + q.w * q.x),
+                            q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z,
+                        ),
+                    }
                 }
             }
 
             fn second(self, q: $quat) -> $t {
-                use EulerRot::*;
-
-                /// Clamp number to range [-1,1](-1,1) for asin() and acos(), else NaN is possible.
-                #[inline(always)]
-                fn arc_clamp(val: $t) -> $t {
-                    <$t>::min(<$t>::max(val, -1.0), 1.0)
-                }
-
-                match self {
-                    ZYX => arc_clamp(-2.0 * (q.x * q.z - q.w * q.y)).asin(),
-                    ZXY => arc_clamp(2.0 * (q.y * q.z + q.w * q.x)).asin(),
-                    YXZ => arc_clamp(-2.0 * (q.y * q.z - q.w * q.x)).asin(),
-                    YZX => arc_clamp(2.0 * (q.x * q.y + q.w * q.z)).asin(),
-                    XYZ => arc_clamp(2.0 * (q.x * q.z + q.w * q.y)).asin(),
-                    XZY => arc_clamp(-2.0 * (q.x * q.y - q.w * q.z)).asin(),
-                }
+                use crate::$t::math;
+                math::asin(self.sine_theta(q))
             }
 
             fn third(self, q: $quat) -> $t {
+                use crate::$t::math;
                 use EulerRot::*;
-                match self {
-                    ZYX => (2.0 * (q.y * q.z + q.w * q.x))
-                        .atan2(q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z),
-                    ZXY => (-2.0 * (q.x * q.z - q.w * q.y))
-                        .atan2(q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z),
-                    YXZ => (2.0 * (q.x * q.y + q.w * q.z))
-                        .atan2(q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z),
-                    YZX => (-2.0 * (q.y * q.z - q.w * q.x))
-                        .atan2(q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z),
-                    XYZ => (-2.0 * (q.x * q.y - q.w * q.z))
-                        .atan2(q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z),
-                    XZY => (2.0 * (q.x * q.z + q.w * q.y))
-                        .atan2(q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z),
+                if math::abs(self.sine_theta(q)) > 0.99999 {
+                    0.0
+                } else {
+                    match self {
+                        ZYX => math::atan2(
+                            2.0 * (q.y * q.z + q.w * q.x),
+                            q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z,
+                        ),
+                        ZXY => math::atan2(
+                            -2.0 * (q.x * q.z - q.w * q.y),
+                            q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z,
+                        ),
+                        YXZ => math::atan2(
+                            2.0 * (q.x * q.y + q.w * q.z),
+                            q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z,
+                        ),
+                        YZX => math::atan2(
+                            -2.0 * (q.y * q.z - q.w * q.x),
+                            q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z,
+                        ),
+                        XYZ => math::atan2(
+                            -2.0 * (q.x * q.y - q.w * q.z),
+                            q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z,
+                        ),
+                        XZY => math::atan2(
+                            2.0 * (q.x * q.z + q.w * q.y),
+                            q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z,
+                        ),
+                    }
                 }
+            }
+
+            fn convert_quat(self, q: $quat) -> ($t, $t, $t) {
+                use crate::$t::math;
+                use EulerRot::*;
+
+                let sine_theta = self.sine_theta(q);
+                let second = math::asin(sine_theta);
+
+                if math::abs(sine_theta) > 0.99999 {
+                    let scale = 2.0 * math::signum(sine_theta);
+
+                    return match self {
+                        ZYX => (scale * math::atan2(-q.x, q.w), second, 0.0),
+                        ZXY => (scale * math::atan2(q.y, q.w), second, 0.0),
+                        YXZ => (scale * math::atan2(-q.z, q.w), second, 0.0),
+                        YZX => (scale * math::atan2(q.x, q.w), second, 0.0),
+                        XYZ => (scale * math::atan2(q.z, q.w), second, 0.0),
+                        XZY => (scale * math::atan2(-q.y, q.w), second, 0.0),
+                    };
+                }
+
+                let first = match self {
+                    ZYX => math::atan2(
+                        2.0 * (q.x * q.y + q.w * q.z),
+                        q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z,
+                    ),
+                    ZXY => math::atan2(
+                        -2.0 * (q.x * q.y - q.w * q.z),
+                        q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z,
+                    ),
+                    YXZ => math::atan2(
+                        2.0 * (q.x * q.z + q.w * q.y),
+                        q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z,
+                    ),
+                    YZX => math::atan2(
+                        -2.0 * (q.x * q.z - q.w * q.y),
+                        q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z,
+                    ),
+                    XYZ => math::atan2(
+                        -2.0 * (q.y * q.z - q.w * q.x),
+                        q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z,
+                    ),
+                    XZY => math::atan2(
+                        2.0 * (q.y * q.z + q.w * q.x),
+                        q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z,
+                    ),
+                };
+
+                let third = match self {
+                    ZYX => math::atan2(
+                        2.0 * (q.y * q.z + q.w * q.x),
+                        q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z,
+                    ),
+                    ZXY => math::atan2(
+                        -2.0 * (q.x * q.z - q.w * q.y),
+                        q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z,
+                    ),
+                    YXZ => math::atan2(
+                        2.0 * (q.x * q.y + q.w * q.z),
+                        q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z,
+                    ),
+                    YZX => math::atan2(
+                        -2.0 * (q.y * q.z - q.w * q.x),
+                        q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z,
+                    ),
+                    XYZ => math::atan2(
+                        -2.0 * (q.x * q.y - q.w * q.z),
+                        q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z,
+                    ),
+                    XZY => math::atan2(
+                        2.0 * (q.x * q.z + q.w * q.y),
+                        q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z,
+                    ),
+                };
+
+                (first, second, third)
             }
         }
         // End - impl EulerFromQuaternion

@@ -218,10 +218,8 @@ and benchmarks.
 * `std` - the default feature, has no dependencies.
 * `approx` - traits and macros for approximate float comparisons
 * `bytemuck` - for casting into slices of bytes
-* `libm` - required to compile with `no_std`
+* `libm` - uses `libm` math functions instead of `std`, required to compile with `no_std`
 * `mint` - for interoperating with other 3D math libraries
-* `num-traits` - required to compile `no_std`, will be included when enabling
-  the `libm` feature
 * `rand` - implementations of `Distribution` trait for all `glam` types.
 * `rkyv` - implementations of `Archive`, `Serialize` and `Deserialize` for all
   `glam` types. Note that serialization is not interoperable with and without the
@@ -250,7 +248,7 @@ and benchmarks.
 The minimum supported Rust version is `1.58.1`.
 
 */
-#![doc(html_root_url = "https://docs.rs/glam/0.23.0")]
+#![doc(html_root_url = "https://docs.rs/glam/0.24.2")]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(target_arch = "spirv", feature(repr_simd))]
 #![deny(
@@ -273,7 +271,6 @@ mod align16;
 mod deref;
 mod euler;
 mod features;
-mod float_ex;
 
 #[cfg(target_arch = "spirv")]
 mod spirv;
@@ -298,8 +295,6 @@ mod coresimd;
     not(any(feature = "core-simd", feature = "scalar-math"))
 ))]
 use align16::Align16;
-
-use float_ex::FloatEx;
 
 /** `bool` vector mask types. */
 pub mod bool;
@@ -335,3 +330,7 @@ pub use self::swizzles::{Vec2Swizzles, Vec3Swizzles, Vec4Swizzles};
 
 /** Rotation Helper */
 pub use euler::EulerRot;
+
+/** A trait for extending [`prim@f32`] and [`prim@f64`] with extra methods. */
+mod float;
+pub use float::FloatExt;
