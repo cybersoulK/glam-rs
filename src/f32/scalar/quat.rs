@@ -876,6 +876,6 @@ impl From<[f32; 4]> for Quat {
 
 impl AsMut<[f32; 4]> for Quat {
     fn as_mut(&mut self) -> &mut [f32; 4] {
-        &mut self.to_array()
+        unsafe { &mut *(self as *mut Quat as *mut [f32; 4]) }
     }
 }
