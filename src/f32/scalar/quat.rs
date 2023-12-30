@@ -865,3 +865,11 @@ impl From<Quat> for [f32; 4] {
         [q.x, q.y, q.z, q.w]
     }
 }
+
+///implemented by me to work with encase
+impl From<[f32; 4]> for Quat {
+    #[inline]
+    fn from(value: [f32; 4]) -> Self {
+        Quat::from_array(value)
+    }
+}
