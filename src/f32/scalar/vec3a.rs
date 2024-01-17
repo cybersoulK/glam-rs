@@ -9,6 +9,7 @@ use core::{f32, ops::*};
 
 /// Creates a 3-dimensional vector.
 #[inline(always)]
+#[must_use]
 pub const fn vec3a(x: f32, y: f32, z: f32) -> Vec3A {
     Vec3A::new(x, y, z)
 }
@@ -80,12 +81,14 @@ impl Vec3A {
 
     /// Creates a new vector.
     #[inline(always)]
+    #[must_use]
     pub const fn new(x: f32, y: f32, z: f32) -> Self {
         Self { x, y, z }
     }
 
     /// Creates a vector with all elements set to `v`.
     #[inline]
+    #[must_use]
     pub const fn splat(v: f32) -> Self {
         Self { x: v, y: v, z: v }
     }
@@ -96,22 +99,25 @@ impl Vec3A {
     /// A true element in the mask uses the corresponding element from `if_true`, and false
     /// uses the element from `if_false`.
     #[inline]
+    #[must_use]
     pub fn select(mask: BVec3A, if_true: Self, if_false: Self) -> Self {
         Self {
-            x: if mask.x != 0 { if_true.x } else { if_false.x },
-            y: if mask.y != 0 { if_true.y } else { if_false.y },
-            z: if mask.z != 0 { if_true.z } else { if_false.z },
+            x: if mask.test(0) { if_true.x } else { if_false.x },
+            y: if mask.test(1) { if_true.y } else { if_false.y },
+            z: if mask.test(2) { if_true.z } else { if_false.z },
         }
     }
 
     /// Creates a new vector from an array.
     #[inline]
+    #[must_use]
     pub const fn from_array(a: [f32; 3]) -> Self {
         Self::new(a[0], a[1], a[2])
     }
 
     /// `[x, y, z]`
     #[inline]
+    #[must_use]
     pub const fn to_array(&self) -> [f32; 3] {
         [self.x, self.y, self.z]
     }
@@ -122,6 +128,7 @@ impl Vec3A {
     ///
     /// Panics if `slice` is less than 3 elements long.
     #[inline]
+    #[must_use]
     pub const fn from_slice(slice: &[f32]) -> Self {
         Self::new(slice[0], slice[1], slice[2])
     }
@@ -141,6 +148,7 @@ impl Vec3A {
     /// Internal method for creating a 3D vector from a 4D vector, discarding `w`.
     #[allow(dead_code)]
     #[inline]
+    #[must_use]
     pub(crate) fn from_vec4(v: Vec4) -> Self {
         Self {
             x: v.x,
@@ -151,6 +159,7 @@ impl Vec3A {
 
     /// Creates a 4D vector from `self` and the given `w` value.
     #[inline]
+    #[must_use]
     pub fn extend(self, w: f32) -> Vec4 {
         Vec4::new(self.x, self.y, self.z, w)
     }
@@ -159,6 +168,7 @@ impl Vec3A {
     ///
     /// Truncation may also be performed by using [`self.xy()`][crate::swizzles::Vec3Swizzles::xy()].
     #[inline]
+    #[must_use]
     pub fn truncate(self) -> Vec2 {
         use crate::swizzles::Vec3Swizzles;
         self.xy()
@@ -166,18 +176,21 @@ impl Vec3A {
 
     /// Computes the dot product of `self` and `rhs`.
     #[inline]
+    #[must_use]
     pub fn dot(self, rhs: Self) -> f32 {
         (self.x * rhs.x) + (self.y * rhs.y) + (self.z * rhs.z)
     }
 
     /// Returns a vector where every component is the dot product of `self` and `rhs`.
     #[inline]
+    #[must_use]
     pub fn dot_into_vec(self, rhs: Self) -> Self {
         Self::splat(self.dot(rhs))
     }
 
     /// Computes the cross product of `self` and `rhs`.
     #[inline]
+    #[must_use]
     pub fn cross(self, rhs: Self) -> Self {
         Self {
             x: self.y * rhs.z - rhs.y * self.z,
@@ -190,6 +203,7 @@ impl Vec3A {
     ///
     /// In other words this computes `[self.x.min(rhs.x), self.y.min(rhs.y), ..]`.
     #[inline]
+    #[must_use]
     pub fn min(self, rhs: Self) -> Self {
         Self {
             x: self.x.min(rhs.x),
@@ -202,6 +216,7 @@ impl Vec3A {
     ///
     /// In other words this computes `[self.x.max(rhs.x), self.y.max(rhs.y), ..]`.
     #[inline]
+    #[must_use]
     pub fn max(self, rhs: Self) -> Self {
         Self {
             x: self.x.max(rhs.x),
@@ -218,6 +233,7 @@ impl Vec3A {
     ///
     /// Will panic if `min` is greater than `max` when `glam_assert` is enabled.
     #[inline]
+    #[must_use]
     pub fn clamp(self, min: Self, max: Self) -> Self {
         glam_assert!(min.cmple(max).all(), "clamp: expected min <= max");
         self.max(min).min(max)
@@ -227,6 +243,7 @@ impl Vec3A {
     ///
     /// In other words this computes `min(x, y, ..)`.
     #[inline]
+    #[must_use]
     pub fn min_element(self) -> f32 {
         self.x.min(self.y.min(self.z))
     }
@@ -235,6 +252,7 @@ impl Vec3A {
     ///
     /// In other words this computes `max(x, y, ..)`.
     #[inline]
+    #[must_use]
     pub fn max_element(self) -> f32 {
         self.x.max(self.y.max(self.z))
     }
@@ -245,6 +263,7 @@ impl Vec3A {
     /// In other words, this computes `[self.x == rhs.x, self.y == rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmpeq(self, rhs: Self) -> BVec3A {
         BVec3A::new(self.x.eq(&rhs.x), self.y.eq(&rhs.y), self.z.eq(&rhs.z))
     }
@@ -255,6 +274,7 @@ impl Vec3A {
     /// In other words this computes `[self.x != rhs.x, self.y != rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmpne(self, rhs: Self) -> BVec3A {
         BVec3A::new(self.x.ne(&rhs.x), self.y.ne(&rhs.y), self.z.ne(&rhs.z))
     }
@@ -265,6 +285,7 @@ impl Vec3A {
     /// In other words this computes `[self.x >= rhs.x, self.y >= rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmpge(self, rhs: Self) -> BVec3A {
         BVec3A::new(self.x.ge(&rhs.x), self.y.ge(&rhs.y), self.z.ge(&rhs.z))
     }
@@ -275,6 +296,7 @@ impl Vec3A {
     /// In other words this computes `[self.x > rhs.x, self.y > rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmpgt(self, rhs: Self) -> BVec3A {
         BVec3A::new(self.x.gt(&rhs.x), self.y.gt(&rhs.y), self.z.gt(&rhs.z))
     }
@@ -285,6 +307,7 @@ impl Vec3A {
     /// In other words this computes `[self.x <= rhs.x, self.y <= rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmple(self, rhs: Self) -> BVec3A {
         BVec3A::new(self.x.le(&rhs.x), self.y.le(&rhs.y), self.z.le(&rhs.z))
     }
@@ -295,12 +318,14 @@ impl Vec3A {
     /// In other words this computes `[self.x < rhs.x, self.y < rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmplt(self, rhs: Self) -> BVec3A {
         BVec3A::new(self.x.lt(&rhs.x), self.y.lt(&rhs.y), self.z.lt(&rhs.z))
     }
 
     /// Returns a vector containing the absolute value of each element of `self`.
     #[inline]
+    #[must_use]
     pub fn abs(self) -> Self {
         Self {
             x: math::abs(self.x),
@@ -315,6 +340,7 @@ impl Vec3A {
     /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
     /// - `NAN` if the number is `NAN`
     #[inline]
+    #[must_use]
     pub fn signum(self) -> Self {
         Self {
             x: math::signum(self.x),
@@ -325,6 +351,7 @@ impl Vec3A {
 
     /// Returns a vector with signs of `rhs` and the magnitudes of `self`.
     #[inline]
+    #[must_use]
     pub fn copysign(self, rhs: Self) -> Self {
         Self {
             x: math::copysign(self.x, rhs.x),
@@ -338,6 +365,7 @@ impl Vec3A {
     /// A negative element results in a `1` bit and a positive element in a `0` bit.  Element `x` goes
     /// into the first lowest bit, element `y` into the second, etc.
     #[inline]
+    #[must_use]
     pub fn is_negative_bitmask(self) -> u32 {
         (self.x.is_sign_negative() as u32)
             | (self.y.is_sign_negative() as u32) << 1
@@ -347,12 +375,14 @@ impl Vec3A {
     /// Returns `true` if, and only if, all elements are finite.  If any element is either
     /// `NaN`, positive or negative infinity, this will return `false`.
     #[inline]
+    #[must_use]
     pub fn is_finite(self) -> bool {
         self.x.is_finite() && self.y.is_finite() && self.z.is_finite()
     }
 
     /// Returns `true` if any elements are `NaN`.
     #[inline]
+    #[must_use]
     pub fn is_nan(self) -> bool {
         self.x.is_nan() || self.y.is_nan() || self.z.is_nan()
     }
@@ -361,6 +391,7 @@ impl Vec3A {
     ///
     /// In other words, this computes `[x.is_nan(), y.is_nan(), z.is_nan(), w.is_nan()]`.
     #[inline]
+    #[must_use]
     pub fn is_nan_mask(self) -> BVec3A {
         BVec3A::new(self.x.is_nan(), self.y.is_nan(), self.z.is_nan())
     }
@@ -368,6 +399,7 @@ impl Vec3A {
     /// Computes the length of `self`.
     #[doc(alias = "magnitude")]
     #[inline]
+    #[must_use]
     pub fn length(self) -> f32 {
         math::sqrt(self.dot(self))
     }
@@ -377,6 +409,7 @@ impl Vec3A {
     /// This is faster than `length()` as it avoids a square root operation.
     #[doc(alias = "magnitude2")]
     #[inline]
+    #[must_use]
     pub fn length_squared(self) -> f32 {
         self.dot(self)
     }
@@ -385,24 +418,28 @@ impl Vec3A {
     ///
     /// For valid results, `self` must _not_ be of length zero.
     #[inline]
+    #[must_use]
     pub fn length_recip(self) -> f32 {
         self.length().recip()
     }
 
     /// Computes the Euclidean distance between two points in space.
     #[inline]
+    #[must_use]
     pub fn distance(self, rhs: Self) -> f32 {
         (self - rhs).length()
     }
 
     /// Compute the squared euclidean distance between two points in space.
     #[inline]
+    #[must_use]
     pub fn distance_squared(self, rhs: Self) -> f32 {
         (self - rhs).length_squared()
     }
 
     /// Returns the element-wise quotient of [Euclidean division] of `self` by `rhs`.
     #[inline]
+    #[must_use]
     pub fn div_euclid(self, rhs: Self) -> Self {
         Self::new(
             math::div_euclid(self.x, rhs.x),
@@ -415,6 +452,7 @@ impl Vec3A {
     ///
     /// [Euclidean division]: f32::rem_euclid
     #[inline]
+    #[must_use]
     pub fn rem_euclid(self, rhs: Self) -> Self {
         Self::new(
             math::rem_euclid(self.x, rhs.x),
@@ -432,8 +470,8 @@ impl Vec3A {
     /// Panics
     ///
     /// Will panic if `self` is zero length when `glam_assert` is enabled.
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn normalize(self) -> Self {
         #[allow(clippy::let_and_return)]
         let normalized = self.mul(self.length_recip());
@@ -447,8 +485,8 @@ impl Vec3A {
     /// the result of this operation will be `None`.
     ///
     /// See also [`Self::normalize_or_zero()`].
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn try_normalize(self) -> Option<Self> {
         let rcp = self.length_recip();
         if rcp.is_finite() && rcp > 0.0 {
@@ -464,8 +502,8 @@ impl Vec3A {
     /// the result of this operation will be zero.
     ///
     /// See also [`Self::try_normalize()`].
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn normalize_or_zero(self) -> Self {
         let rcp = self.length_recip();
         if rcp.is_finite() && rcp > 0.0 {
@@ -477,8 +515,9 @@ impl Vec3A {
 
     /// Returns whether `self` is length `1.0` or not.
     ///
-    /// Uses a precision threshold of `1e-6`.
+    /// Uses a precision threshold of `1e-4`.
     #[inline]
+    #[must_use]
     pub fn is_normalized(self) -> bool {
         // TODO: do something with epsilon
         math::abs(self.length_squared() - 1.0) <= 1e-4
@@ -491,8 +530,8 @@ impl Vec3A {
     /// # Panics
     ///
     /// Will panic if `rhs` is zero length when `glam_assert` is enabled.
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn project_onto(self, rhs: Self) -> Self {
         let other_len_sq_rcp = rhs.dot(rhs).recip();
         glam_assert!(other_len_sq_rcp.is_finite());
@@ -509,8 +548,8 @@ impl Vec3A {
     /// # Panics
     ///
     /// Will panic if `rhs` has a length of zero when `glam_assert` is enabled.
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn reject_from(self, rhs: Self) -> Self {
         self - self.project_onto(rhs)
     }
@@ -522,8 +561,8 @@ impl Vec3A {
     /// # Panics
     ///
     /// Will panic if `rhs` is not normalized when `glam_assert` is enabled.
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn project_onto_normalized(self, rhs: Self) -> Self {
         glam_assert!(rhs.is_normalized());
         rhs * self.dot(rhs)
@@ -539,8 +578,8 @@ impl Vec3A {
     /// # Panics
     ///
     /// Will panic if `rhs` is not normalized when `glam_assert` is enabled.
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn reject_from_normalized(self, rhs: Self) -> Self {
         self - self.project_onto_normalized(rhs)
     }
@@ -548,6 +587,7 @@ impl Vec3A {
     /// Returns a vector containing the nearest integer to a number for each element of `self`.
     /// Round half-way cases away from 0.0.
     #[inline]
+    #[must_use]
     pub fn round(self) -> Self {
         Self {
             x: math::round(self.x),
@@ -559,6 +599,7 @@ impl Vec3A {
     /// Returns a vector containing the largest integer less than or equal to a number for each
     /// element of `self`.
     #[inline]
+    #[must_use]
     pub fn floor(self) -> Self {
         Self {
             x: math::floor(self.x),
@@ -570,6 +611,7 @@ impl Vec3A {
     /// Returns a vector containing the smallest integer greater than or equal to a number for
     /// each element of `self`.
     #[inline]
+    #[must_use]
     pub fn ceil(self) -> Self {
         Self {
             x: math::ceil(self.x),
@@ -581,6 +623,7 @@ impl Vec3A {
     /// Returns a vector containing the integer part each element of `self`. This means numbers are
     /// always truncated towards zero.
     #[inline]
+    #[must_use]
     pub fn trunc(self) -> Self {
         Self {
             x: math::trunc(self.x),
@@ -594,6 +637,7 @@ impl Vec3A {
     ///
     /// Note that this is fast but not precise for large numbers.
     #[inline]
+    #[must_use]
     pub fn fract(self) -> Self {
         self - self.floor()
     }
@@ -601,12 +645,14 @@ impl Vec3A {
     /// Returns a vector containing `e^self` (the exponential function) for each element of
     /// `self`.
     #[inline]
+    #[must_use]
     pub fn exp(self) -> Self {
         Self::new(math::exp(self.x), math::exp(self.y), math::exp(self.z))
     }
 
     /// Returns a vector containing each element of `self` raised to the power of `n`.
     #[inline]
+    #[must_use]
     pub fn powf(self, n: f32) -> Self {
         Self::new(
             math::powf(self.x, n),
@@ -617,6 +663,7 @@ impl Vec3A {
 
     /// Returns a vector containing the reciprocal `1.0/n` of each element of `self`.
     #[inline]
+    #[must_use]
     pub fn recip(self) -> Self {
         Self {
             x: 1.0 / self.x,
@@ -632,8 +679,19 @@ impl Vec3A {
     /// extrapolated.
     #[doc(alias = "mix")]
     #[inline]
+    #[must_use]
     pub fn lerp(self, rhs: Self, s: f32) -> Self {
         self + ((rhs - self) * s)
+    }
+
+    /// Calculates the midpoint between `self` and `rhs`.
+    ///
+    /// The midpoint is the average of, or halfway point between, two vectors.
+    /// `a.midpoint(b)` should yield the same result as `a.lerp(b, 0.5)`
+    /// while being slightly cheaper to compute.
+    #[inline]
+    pub fn midpoint(self, rhs: Self) -> Self {
+        (self + rhs) * 0.5
     }
 
     /// Returns true if the absolute difference of all elements between `self` and `rhs` is
@@ -646,6 +704,7 @@ impl Vec3A {
     /// For more see
     /// [comparing floating point numbers](https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/).
     #[inline]
+    #[must_use]
     pub fn abs_diff_eq(self, rhs: Self, max_abs_diff: f32) -> bool {
         self.sub(rhs).abs().cmple(Self::splat(max_abs_diff)).all()
     }
@@ -656,6 +715,7 @@ impl Vec3A {
     ///
     /// Will panic if `min` is greater than `max` when `glam_assert` is enabled.
     #[inline]
+    #[must_use]
     pub fn clamp_length(self, min: f32, max: f32) -> Self {
         glam_assert!(min <= max);
         let length_sq = self.length_squared();
@@ -669,6 +729,8 @@ impl Vec3A {
     }
 
     /// Returns a vector with a length no more than `max`
+    #[inline]
+    #[must_use]
     pub fn clamp_length_max(self, max: f32) -> Self {
         let length_sq = self.length_squared();
         if length_sq > max * max {
@@ -679,6 +741,8 @@ impl Vec3A {
     }
 
     /// Returns a vector with a length no less than `min`
+    #[inline]
+    #[must_use]
     pub fn clamp_length_min(self, min: f32) -> Self {
         let length_sq = self.length_squared();
         if length_sq < min * min {
@@ -696,6 +760,7 @@ impl Vec3A {
     /// and will be heavily dependant on designing algorithms with specific target hardware in
     /// mind.
     #[inline]
+    #[must_use]
     pub fn mul_add(self, a: Self, b: Self) -> Self {
         Self::new(
             math::mul_add(self.x, a.x, b.x),
@@ -708,6 +773,7 @@ impl Vec3A {
     ///
     /// The inputs do not need to be unit vectors however they must be non-zero.
     #[inline]
+    #[must_use]
     pub fn angle_between(self, rhs: Self) -> f32 {
         math::acos_approx(
             self.dot(rhs)
@@ -722,6 +788,7 @@ impl Vec3A {
     /// The output vector is not necessarily unit length. For that use
     /// [`Self::any_orthonormal_vector()`] instead.
     #[inline]
+    #[must_use]
     pub fn any_orthogonal_vector(&self) -> Self {
         // This can probably be optimized
         if math::abs(self.x) > math::abs(self.y) {
@@ -739,6 +806,7 @@ impl Vec3A {
     ///
     /// Will panic if `self` is not normalized when `glam_assert` is enabled.
     #[inline]
+    #[must_use]
     pub fn any_orthonormal_vector(&self) -> Self {
         glam_assert!(self.is_normalized());
         // From https://graphics.pixar.com/library/OrthonormalB/paper.pdf
@@ -755,6 +823,7 @@ impl Vec3A {
     ///
     /// Will panic if `self` is not normalized when `glam_assert` is enabled.
     #[inline]
+    #[must_use]
     pub fn any_orthonormal_pair(&self) -> (Self, Self) {
         glam_assert!(self.is_normalized());
         // From https://graphics.pixar.com/library/OrthonormalB/paper.pdf
@@ -769,30 +838,49 @@ impl Vec3A {
 
     /// Casts all elements of `self` to `f64`.
     #[inline]
+    #[must_use]
     pub fn as_dvec3(&self) -> crate::DVec3 {
         crate::DVec3::new(self.x as f64, self.y as f64, self.z as f64)
     }
 
+    /// Casts all elements of `self` to `i16`.
+    #[inline]
+    #[must_use]
+    pub fn as_i16vec3(&self) -> crate::I16Vec3 {
+        crate::I16Vec3::new(self.x as i16, self.y as i16, self.z as i16)
+    }
+
+    /// Casts all elements of `self` to `u16`.
+    #[inline]
+    #[must_use]
+    pub fn as_u16vec3(&self) -> crate::U16Vec3 {
+        crate::U16Vec3::new(self.x as u16, self.y as u16, self.z as u16)
+    }
+
     /// Casts all elements of `self` to `i32`.
     #[inline]
+    #[must_use]
     pub fn as_ivec3(&self) -> crate::IVec3 {
         crate::IVec3::new(self.x as i32, self.y as i32, self.z as i32)
     }
 
     /// Casts all elements of `self` to `u32`.
     #[inline]
+    #[must_use]
     pub fn as_uvec3(&self) -> crate::UVec3 {
         crate::UVec3::new(self.x as u32, self.y as u32, self.z as u32)
     }
 
     /// Casts all elements of `self` to `i64`.
     #[inline]
+    #[must_use]
     pub fn as_i64vec3(&self) -> crate::I64Vec3 {
         crate::I64Vec3::new(self.x as i64, self.y as i64, self.z as i64)
     }
 
     /// Casts all elements of `self` to `u64`.
     #[inline]
+    #[must_use]
     pub fn as_u64vec3(&self) -> crate::U64Vec3 {
         crate::U64Vec3::new(self.x as u64, self.y as u64, self.z as u64)
     }

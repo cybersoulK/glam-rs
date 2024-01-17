@@ -28,16 +28,19 @@
 
         {% if dim == 4 %}
         #[inline]
+        #[must_use]
         fn xyzw(self) -> Self {
             self
         }
         {% elif dim == 3 %}
         #[inline]
+        #[must_use]
         fn xyz(self) -> Self {
             self
         }
         {% elif dim == 2 %}
         #[inline]
+        #[must_use]
         fn xy(self) -> Self {
             self
         }

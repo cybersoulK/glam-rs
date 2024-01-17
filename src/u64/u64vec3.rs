@@ -1,6 +1,6 @@
 // Generated from vec.rs.tera template. Edit the template, not the generated file.
 
-use crate::{BVec3, I64Vec3, U64Vec2, U64Vec4, UVec3};
+use crate::{BVec3, I16Vec3, I64Vec3, IVec3, U16Vec3, U64Vec2, U64Vec4, UVec3};
 
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
@@ -9,6 +9,7 @@ use core::{f32, ops::*};
 
 /// Creates a 3-dimensional vector.
 #[inline(always)]
+#[must_use]
 pub const fn u64vec3(x: u64, y: u64, z: u64) -> U64Vec3 {
     U64Vec3::new(x, y, z)
 }
@@ -51,12 +52,14 @@ impl U64Vec3 {
 
     /// Creates a new vector.
     #[inline(always)]
+    #[must_use]
     pub const fn new(x: u64, y: u64, z: u64) -> Self {
         Self { x, y, z }
     }
 
     /// Creates a vector with all elements set to `v`.
     #[inline]
+    #[must_use]
     pub const fn splat(v: u64) -> Self {
         Self { x: v, y: v, z: v }
     }
@@ -67,22 +70,25 @@ impl U64Vec3 {
     /// A true element in the mask uses the corresponding element from `if_true`, and false
     /// uses the element from `if_false`.
     #[inline]
+    #[must_use]
     pub fn select(mask: BVec3, if_true: Self, if_false: Self) -> Self {
         Self {
-            x: if mask.x { if_true.x } else { if_false.x },
-            y: if mask.y { if_true.y } else { if_false.y },
-            z: if mask.z { if_true.z } else { if_false.z },
+            x: if mask.test(0) { if_true.x } else { if_false.x },
+            y: if mask.test(1) { if_true.y } else { if_false.y },
+            z: if mask.test(2) { if_true.z } else { if_false.z },
         }
     }
 
     /// Creates a new vector from an array.
     #[inline]
+    #[must_use]
     pub const fn from_array(a: [u64; 3]) -> Self {
         Self::new(a[0], a[1], a[2])
     }
 
     /// `[x, y, z]`
     #[inline]
+    #[must_use]
     pub const fn to_array(&self) -> [u64; 3] {
         [self.x, self.y, self.z]
     }
@@ -93,6 +99,7 @@ impl U64Vec3 {
     ///
     /// Panics if `slice` is less than 3 elements long.
     #[inline]
+    #[must_use]
     pub const fn from_slice(slice: &[u64]) -> Self {
         Self::new(slice[0], slice[1], slice[2])
     }
@@ -112,6 +119,7 @@ impl U64Vec3 {
     /// Internal method for creating a 3D vector from a 4D vector, discarding `w`.
     #[allow(dead_code)]
     #[inline]
+    #[must_use]
     pub(crate) fn from_vec4(v: U64Vec4) -> Self {
         Self {
             x: v.x,
@@ -122,6 +130,7 @@ impl U64Vec3 {
 
     /// Creates a 4D vector from `self` and the given `w` value.
     #[inline]
+    #[must_use]
     pub fn extend(self, w: u64) -> U64Vec4 {
         U64Vec4::new(self.x, self.y, self.z, w)
     }
@@ -130,6 +139,7 @@ impl U64Vec3 {
     ///
     /// Truncation may also be performed by using [`self.xy()`][crate::swizzles::Vec3Swizzles::xy()].
     #[inline]
+    #[must_use]
     pub fn truncate(self) -> U64Vec2 {
         use crate::swizzles::Vec3Swizzles;
         self.xy()
@@ -137,18 +147,21 @@ impl U64Vec3 {
 
     /// Computes the dot product of `self` and `rhs`.
     #[inline]
+    #[must_use]
     pub fn dot(self, rhs: Self) -> u64 {
         (self.x * rhs.x) + (self.y * rhs.y) + (self.z * rhs.z)
     }
 
     /// Returns a vector where every component is the dot product of `self` and `rhs`.
     #[inline]
+    #[must_use]
     pub fn dot_into_vec(self, rhs: Self) -> Self {
         Self::splat(self.dot(rhs))
     }
 
     /// Computes the cross product of `self` and `rhs`.
     #[inline]
+    #[must_use]
     pub fn cross(self, rhs: Self) -> Self {
         Self {
             x: self.y * rhs.z - rhs.y * self.z,
@@ -161,6 +174,7 @@ impl U64Vec3 {
     ///
     /// In other words this computes `[self.x.min(rhs.x), self.y.min(rhs.y), ..]`.
     #[inline]
+    #[must_use]
     pub fn min(self, rhs: Self) -> Self {
         Self {
             x: self.x.min(rhs.x),
@@ -173,6 +187,7 @@ impl U64Vec3 {
     ///
     /// In other words this computes `[self.x.max(rhs.x), self.y.max(rhs.y), ..]`.
     #[inline]
+    #[must_use]
     pub fn max(self, rhs: Self) -> Self {
         Self {
             x: self.x.max(rhs.x),
@@ -189,6 +204,7 @@ impl U64Vec3 {
     ///
     /// Will panic if `min` is greater than `max` when `glam_assert` is enabled.
     #[inline]
+    #[must_use]
     pub fn clamp(self, min: Self, max: Self) -> Self {
         glam_assert!(min.cmple(max).all(), "clamp: expected min <= max");
         self.max(min).min(max)
@@ -198,6 +214,7 @@ impl U64Vec3 {
     ///
     /// In other words this computes `min(x, y, ..)`.
     #[inline]
+    #[must_use]
     pub fn min_element(self) -> u64 {
         self.x.min(self.y.min(self.z))
     }
@@ -206,6 +223,7 @@ impl U64Vec3 {
     ///
     /// In other words this computes `max(x, y, ..)`.
     #[inline]
+    #[must_use]
     pub fn max_element(self) -> u64 {
         self.x.max(self.y.max(self.z))
     }
@@ -216,6 +234,7 @@ impl U64Vec3 {
     /// In other words, this computes `[self.x == rhs.x, self.y == rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmpeq(self, rhs: Self) -> BVec3 {
         BVec3::new(self.x.eq(&rhs.x), self.y.eq(&rhs.y), self.z.eq(&rhs.z))
     }
@@ -226,6 +245,7 @@ impl U64Vec3 {
     /// In other words this computes `[self.x != rhs.x, self.y != rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmpne(self, rhs: Self) -> BVec3 {
         BVec3::new(self.x.ne(&rhs.x), self.y.ne(&rhs.y), self.z.ne(&rhs.z))
     }
@@ -236,6 +256,7 @@ impl U64Vec3 {
     /// In other words this computes `[self.x >= rhs.x, self.y >= rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmpge(self, rhs: Self) -> BVec3 {
         BVec3::new(self.x.ge(&rhs.x), self.y.ge(&rhs.y), self.z.ge(&rhs.z))
     }
@@ -246,6 +267,7 @@ impl U64Vec3 {
     /// In other words this computes `[self.x > rhs.x, self.y > rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmpgt(self, rhs: Self) -> BVec3 {
         BVec3::new(self.x.gt(&rhs.x), self.y.gt(&rhs.y), self.z.gt(&rhs.z))
     }
@@ -256,6 +278,7 @@ impl U64Vec3 {
     /// In other words this computes `[self.x <= rhs.x, self.y <= rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmple(self, rhs: Self) -> BVec3 {
         BVec3::new(self.x.le(&rhs.x), self.y.le(&rhs.y), self.z.le(&rhs.z))
     }
@@ -266,6 +289,7 @@ impl U64Vec3 {
     /// In other words this computes `[self.x < rhs.x, self.y < rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmplt(self, rhs: Self) -> BVec3 {
         BVec3::new(self.x.lt(&rhs.x), self.y.lt(&rhs.y), self.z.lt(&rhs.z))
     }
@@ -273,42 +297,63 @@ impl U64Vec3 {
     /// Computes the squared length of `self`.
     #[doc(alias = "magnitude2")]
     #[inline]
+    #[must_use]
     pub fn length_squared(self) -> u64 {
         self.dot(self)
     }
 
     /// Casts all elements of `self` to `f32`.
     #[inline]
+    #[must_use]
     pub fn as_vec3(&self) -> crate::Vec3 {
         crate::Vec3::new(self.x as f32, self.y as f32, self.z as f32)
     }
 
     /// Casts all elements of `self` to `f32`.
     #[inline]
+    #[must_use]
     pub fn as_vec3a(&self) -> crate::Vec3A {
         crate::Vec3A::new(self.x as f32, self.y as f32, self.z as f32)
     }
 
     /// Casts all elements of `self` to `f64`.
     #[inline]
+    #[must_use]
     pub fn as_dvec3(&self) -> crate::DVec3 {
         crate::DVec3::new(self.x as f64, self.y as f64, self.z as f64)
     }
 
+    /// Casts all elements of `self` to `i16`.
+    #[inline]
+    #[must_use]
+    pub fn as_i16vec3(&self) -> crate::I16Vec3 {
+        crate::I16Vec3::new(self.x as i16, self.y as i16, self.z as i16)
+    }
+
+    /// Casts all elements of `self` to `u16`.
+    #[inline]
+    #[must_use]
+    pub fn as_u16vec3(&self) -> crate::U16Vec3 {
+        crate::U16Vec3::new(self.x as u16, self.y as u16, self.z as u16)
+    }
+
     /// Casts all elements of `self` to `i32`.
     #[inline]
+    #[must_use]
     pub fn as_ivec3(&self) -> crate::IVec3 {
         crate::IVec3::new(self.x as i32, self.y as i32, self.z as i32)
     }
 
     /// Casts all elements of `self` to `u32`.
     #[inline]
+    #[must_use]
     pub fn as_uvec3(&self) -> crate::UVec3 {
         crate::UVec3::new(self.x as u32, self.y as u32, self.z as u32)
     }
 
     /// Casts all elements of `self` to `i64`.
     #[inline]
+    #[must_use]
     pub fn as_i64vec3(&self) -> crate::I64Vec3 {
         crate::I64Vec3::new(self.x as i64, self.y as i64, self.z as i64)
     }
@@ -414,6 +459,32 @@ impl U64Vec3 {
             x: self.x.saturating_div(rhs.x),
             y: self.y.saturating_div(rhs.y),
             z: self.z.saturating_div(rhs.z),
+        }
+    }
+
+    /// Returns a vector containing the wrapping addition of `self` and signed vector `rhs`.
+    ///
+    /// In other words this computes `[self.x.wrapping_add_signed(rhs.x), self.y.wrapping_add_signed(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn wrapping_add_signed(self, rhs: I64Vec3) -> Self {
+        Self {
+            x: self.x.wrapping_add_signed(rhs.x),
+            y: self.y.wrapping_add_signed(rhs.y),
+            z: self.z.wrapping_add_signed(rhs.z),
+        }
+    }
+
+    /// Returns a vector containing the saturating addition of `self` and signed vector `rhs`.
+    ///
+    /// In other words this computes `[self.x.saturating_add_signed(rhs.x), self.y.saturating_add_signed(rhs.y), ..]`.
+    #[inline]
+    #[must_use]
+    pub const fn saturating_add_signed(self, rhs: I64Vec3) -> Self {
+        Self {
+            x: self.x.saturating_add_signed(rhs.x),
+            y: self.y.saturating_add_signed(rhs.y),
+            z: self.z.saturating_add_signed(rhs.z),
         }
     }
 }
@@ -1153,10 +1224,43 @@ impl From<(U64Vec2, u64)> for U64Vec3 {
     }
 }
 
+impl From<U16Vec3> for U64Vec3 {
+    #[inline]
+    fn from(v: U16Vec3) -> Self {
+        Self::new(u64::from(v.x), u64::from(v.y), u64::from(v.z))
+    }
+}
+
 impl From<UVec3> for U64Vec3 {
     #[inline]
     fn from(v: UVec3) -> Self {
         Self::new(u64::from(v.x), u64::from(v.y), u64::from(v.z))
+    }
+}
+
+impl TryFrom<I16Vec3> for U64Vec3 {
+    type Error = core::num::TryFromIntError;
+
+    #[inline]
+    fn try_from(v: I16Vec3) -> Result<Self, Self::Error> {
+        Ok(Self::new(
+            u64::try_from(v.x)?,
+            u64::try_from(v.y)?,
+            u64::try_from(v.z)?,
+        ))
+    }
+}
+
+impl TryFrom<IVec3> for U64Vec3 {
+    type Error = core::num::TryFromIntError;
+
+    #[inline]
+    fn try_from(v: IVec3) -> Result<Self, Self::Error> {
+        Ok(Self::new(
+            u64::try_from(v.x)?,
+            u64::try_from(v.y)?,
+            u64::try_from(v.z)?,
+        ))
     }
 }
 

@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog], and this project adheres to
 [Semantic Versioning].
 
+## [0.25.0] - 2023-12-19
+
+### Breaking changes
+
+* Changed `Vec4` to always used `BVec4A` as a mask type, regardless if the
+  target architecture has SIMD support in glam. Previously this was inconsistent
+  on different hardware like ARM. This will have a slight performance cost when
+  SIMD is not available. `Vec4` will continue to use `BVec4` as a mask type when
+  the `scalar-math` feature is used.
+
+### Fixed
+
+* Made `Affine2` implement the `bytemuck::AnyBitPattern` trait instead of
+  `bytemuck::Pod` as it contains internal padding due to `Mat2` being 16 byte
+  aligned.
+
+* Updated the `core-simd` implementation to build on latest nightly.
+
+### Added
+
+* Added `to_angle` method to 2D vectors.
+
+* Added `FloatExt` trait which adds `lerp`, `inverse_lerp` and `remap` methods
+  to `f32` and `f64` types.
+
+* Added `i16` and `u16` vector types, `I16Vec2`, `I16Vec3`, `I16Vec4`,
+  `U16Vec2`, `U16Vec3` and `U16Vec4`.
+
+### Changed
+
+* Renamed `Quat::as_f64()` to `Quat::as_dquat()` and `DQuat::as_f32()` to
+  `DQuat::as_quat()` to be consistent with other types. The old methods have
+  been deprecated.
+
+* Added the `#[must_use]` attribute to all pure functions following the
+  guidelines for the Rust standard library.
+
 ## [0.24.2] - 2023-09-23
 
 ### Fixed
@@ -46,7 +83,7 @@ The format is based on [Keep a Changelog], and this project adheres to
 ### Breaking changes
 
 * Enabling `libm` in a `std` build now overrides the `std` math functions. This
-  is unlikely to break anything but it is a change in behaviour.
+  is unlikely to break anything but it is a change in behavior.
 
 ### Added
 
@@ -435,7 +472,7 @@ The format is based on [Keep a Changelog], and this project adheres to
 * Removed deprecated `zero()`, `one()`, `unit_x()`, `unit_y()`, `unit_z()`,
   `unit_w()`, `identity()` and `Mat2::scale()` methods.
 * Remove problematic `Quat` `From` trait conversions which would allow creating
-  a non-uniform quaternion without necessarily realising, including from
+  a non-uniform quaternion without necessarily realizing, including from
   `Vec4`, `(x, y, z, w)` and `[f32; 4]`.
 
 ### Added
@@ -964,7 +1001,8 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 [Keep a Changelog]: https://keepachangelog.com/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
-[Unreleased]: https://github.com/bitshifter/glam-rs/compare/0.24.2...HEAD
+[Unreleased]: https://github.com/bitshifter/glam-rs/compare/0.25.0...HEAD
+[0.25.0]: https://github.com/bitshifter/glam-rs/compare/0.24.2...0.25.0
 [0.24.2]: https://github.com/bitshifter/glam-rs/compare/0.24.1...0.24.2
 [0.24.1]: https://github.com/bitshifter/glam-rs/compare/0.24.0...0.24.1
 [0.24.0]: https://github.com/bitshifter/glam-rs/compare/0.23.0...0.24.0

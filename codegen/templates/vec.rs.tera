@@ -2,7 +2,7 @@
 
 // Generated from {{template_path}} template. Edit the template, not the generated file.
 
-{% if is_scalar %}
+{% if is_scalar and not is_align %}
     {% set mask_t = "BVec" ~ dim %}
 {% else %}
     {% set is_simd = true %}
@@ -12,6 +12,8 @@
         {% set simd_t = "v128" %}
     {% elif is_coresimd %}
         {% set simd_t = "f32x4" %}
+    {% else %}
+        {% set is_simd = false %}
     {% endif %}
     {% set mask_t = "BVec" ~ dim ~ "A" %}
 {% endif %}
@@ -20,7 +22,7 @@
     {% set is_signed = true %}
     {% set is_float = true %}
     {% if scalar_t == "f32" %}
-        {% if dim == 3 and is_simd or is_align %}
+        {% if dim == 3 and is_align %}
             {% set self_t = "Vec3A" %}
             {% set mask_t = "BVec3A" %}
         {% else %}
@@ -37,46 +39,82 @@
         {% set vec4_t = "DVec4" %}
         {% set from_types = ["Vec" ~ dim, "IVec" ~ dim, "UVec" ~ dim] %}
     {% endif %}
+{% elif scalar_t == "i16" %}
+    {% set is_signed = true %}
+    {% set is_float = false %}
+    {% set self_t = "I16Vec" ~ dim %}
+    {% set opposite_signedness_t = "U16Vec" ~ dim %}
+    {% set vec2_t = "I16Vec2" %}
+    {% set vec3_t = "I16Vec3" %}
+    {% set vec4_t = "I16Vec4" %}
+    {% set try_from_types = ["U16Vec" ~ dim, "IVec" ~ dim, "UVec" ~ dim, "I64Vec" ~ dim, "U64Vec" ~ dim] %}
+{% elif scalar_t == "u16" %}
+    {% set is_signed = false %}
+    {% set is_float = false %}
+    {% set self_t = "U16Vec" ~ dim %}
+    {% set opposite_signedness_t = "I16Vec" ~ dim %}
+    {% set vec2_t = "U16Vec2" %}
+    {% set vec3_t = "U16Vec3" %}
+    {% set vec4_t = "U16Vec4" %}
+    {% set try_from_types = ["I16Vec" ~ dim, "IVec" ~ dim, "UVec" ~ dim, "I64Vec" ~ dim, "U64Vec" ~ dim] %}
 {% elif scalar_t == "i32" %}
     {% set is_signed = true %}
     {% set is_float = false %}
     {% set self_t = "IVec" ~ dim %}
+    {% set opposite_signedness_t = "UVec" ~ dim %}
     {% set vec2_t = "IVec2" %}
     {% set vec3_t = "IVec3" %}
     {% set vec4_t = "IVec4" %}
-    {% set try_from_types = ["UVec" ~ dim, "U64Vec" ~ dim, "I64Vec" ~ dim] %}
+    {% set from_types = ["I16Vec" ~ dim, "U16Vec" ~ dim] %}
+    {% set try_from_types = ["UVec" ~ dim, "I64Vec" ~ dim, "U64Vec" ~ dim] %}
 {% elif scalar_t == "u32" %}
     {% set is_signed = false %}
     {% set is_float = false %}
     {% set self_t = "UVec" ~ dim %}
+    {% set opposite_signedness_t = "IVec" ~ dim %}
     {% set vec2_t = "UVec2" %}
     {% set vec3_t = "UVec3" %}
     {% set vec4_t = "UVec4" %}
-    {% set try_from_types = ["IVec" ~ dim, "I64Vec" ~ dim, "U64Vec" ~ dim] %}
+    {% set from_types = ["U16Vec" ~ dim] %}
+    {% set try_from_types = ["I16Vec" ~ dim, "IVec" ~ dim, "I64Vec" ~ dim, "U64Vec" ~ dim] %}
 {% elif scalar_t == "i64" %}
     {% set is_signed = true %}
     {% set is_float = false %}
     {% set self_t = "I64Vec" ~ dim %}
+    {% set opposite_signedness_t = "U64Vec" ~ dim %}
     {% set vec2_t = "I64Vec2" %}
     {% set vec3_t = "I64Vec3" %}
     {% set vec4_t = "I64Vec4" %}
-    {% set from_types = ["IVec" ~ dim] %}
+    {% set from_types = ["I16Vec" ~ dim, "U16Vec" ~ dim, "IVec" ~ dim, "UVec" ~ dim] %}
     {% set try_from_types = ["U64Vec" ~ dim] %}
 {% elif scalar_t == "u64" %}
     {% set is_signed = false %}
     {% set is_float = false %}
     {% set self_t = "U64Vec" ~ dim %}
+    {% set opposite_signedness_t = "I64Vec" ~ dim %}
     {% set vec2_t = "U64Vec2" %}
     {% set vec3_t = "U64Vec3" %}
     {% set vec4_t = "U64Vec4" %}
-    {% set from_types = ["UVec" ~ dim] %}
-    {% set try_from_types = ["I64Vec" ~ dim] %}
+    {% set from_types = ["U16Vec" ~ dim, "UVec" ~ dim] %}
+    {% set try_from_types = ["I16Vec" ~ dim, "IVec" ~ dim, "I64Vec" ~ dim] %}
 {% endif %}
 
-{% if scalar_t == "f64" or scalar_t == "i64" or scalar_t == "u64" or dim == 4 %}
-    {% set cuda_align = 16 %}
-{% elif dim == 2 %}
-    {% set cuda_align = 8 %}
+{% if dim == 2 %}
+    {% if scalar_t == "i16" or scalar_t == "u16" %}
+        {% set cuda_align = 4 %}
+    {% elif scalar_t == "f32" or scalar_t == "i32" or scalar_t == "u32" %}
+        {% set cuda_align = 8 %}
+    {% elif scalar_t == "f64" or scalar_t == "i64" or scalar_t == "u64" %}
+        {% set cuda_align = 16 %}
+    {% endif %}
+{% elif dim == 4 %}
+    {% if scalar_t == "i16" or scalar_t == "u16" %}
+        {% set cuda_align = 8 %}
+    {% elif scalar_t == "f32" or scalar_t == "i32" or scalar_t == "u32" %}
+        {% set cuda_align = 16 %}
+    {% elif scalar_t == "f64" or scalar_t == "i64" or scalar_t == "u64" %}
+        {% set cuda_align = 16 %}
+    {% endif %}
 {% endif %}
 
 {% set components = ["x", "y", "z", "w"] | slice(end = dim) %}
@@ -90,8 +128,16 @@
     {% set zero = "0" %}
 {% endif %}
 
-use crate::{
-    {{ mask_t }},
+{% if mask_t == "BVec4A" and scalar_t == "f32"  and is_scalar %}
+    #[cfg(feature = "scalar-math")]
+    use crate::BVec4 as BVec4A;
+    #[cfg(not(feature = "scalar-math"))]
+    use crate::BVec4A;
+    use crate::{
+{% else %}
+    use crate::{
+        {{ mask_t }},
+{% endif %}
     {% if self_t != vec2_t %}
         {{ vec2_t }},
     {% endif %}
@@ -139,7 +185,7 @@ use core::arch::x86_64::*;
 {% elif is_wasm32 %}
 use core::arch::wasm32::*;
 {% elif is_coresimd %}
-use core::simd::*;
+use core::simd::{cmp::SimdPartialEq, cmp::SimdPartialOrd, num::SimdFloat, *};
 use std::simd::StdFloat;
 {% endif %}
 
@@ -153,6 +199,7 @@ union UnionCast {
 
 /// Creates a {{ dim }}-dimensional vector.
 #[inline(always)]
+#[must_use]
 pub const fn {{ self_t | lower }}(
     {% for c in components %}
         {{ c }}: {{ scalar_t }},
@@ -276,6 +323,7 @@ impl {{ self_t }} {
 
     /// Creates a new vector.
     #[inline(always)]
+    #[must_use]
     pub const fn new(
         {% for c in components %}
             {{ c }}: {{ scalar_t }},
@@ -319,6 +367,7 @@ impl {{ self_t }} {
 
     /// Creates a vector with all elements set to `v`.
     #[inline]
+    #[must_use]
     pub const fn splat(v: {{ scalar_t }}) -> Self {
         {% if is_scalar %}
             Self {
@@ -339,15 +388,12 @@ impl {{ self_t }} {
     /// A true element in the mask uses the corresponding element from `if_true`, and false
     /// uses the element from `if_false`.
     #[inline]
+    #[must_use]
     pub fn select(mask: {{ mask_t }}, if_true: Self, if_false: Self) -> Self {
         {% if is_scalar %}
             Self {
                 {% for c in components %}
-                    {%- if is_align %}
-                        {{ c  }}: if mask.{{ c }} != 0 { if_true.{{ c }} } else { if_false.{{ c }} },
-                    {%- else %}
-                        {{ c  }}: if mask.{{ c }} { if_true.{{ c }} } else { if_false.{{ c }} },
-                    {%- endif %}
+                    {{ c  }}: if mask.test({{ loop.index0 }}) { if_true.{{ c }} } else { if_false.{{ c }} },
                 {%- endfor %}
             }
         {% elif is_sse2 %}
@@ -361,6 +407,7 @@ impl {{ self_t }} {
 
     /// Creates a new vector from an array.
     #[inline]
+    #[must_use]
     pub const fn from_array(a: [{{ scalar_t }}; {{ dim }}]) -> Self {
         Self::new(
             {% for c in components %}
@@ -371,6 +418,7 @@ impl {{ self_t }} {
 
     /// `[{{ components | join(sep=", ") }}]`
     #[inline]
+    #[must_use]
     pub const fn to_array(&self) -> [{{ scalar_t }}; {{ dim }}] {
         {% if is_scalar %}
             [
@@ -389,6 +437,7 @@ impl {{ self_t }} {
     ///
     /// Panics if `slice` is less than {{ dim }} elements long.
     #[inline]
+    #[must_use]
     pub const fn from_slice(slice: &[{{ scalar_t }}]) -> Self {
         Self::new(
             {% for c in components %}
@@ -419,6 +468,7 @@ impl {{ self_t }} {
 {% if dim == 2 %}
     /// Creates a 3D vector from `self` and the given `z` value.
     #[inline]
+    #[must_use]
     pub const fn extend(self, z: {{ scalar_t }}) -> {{ vec3_t }} {
         {{ vec3_t }}::new(self.x, self.y, z)
     }
@@ -426,6 +476,7 @@ impl {{ self_t }} {
     /// Internal method for creating a 3D vector from a 4D vector, discarding `w`.
     #[allow(dead_code)]
     #[inline]
+    #[must_use]
     pub(crate) fn from_vec4(v: {{ vec4_t }}) -> Self {
         {% if is_scalar %}
             Self { x: v.x, y: v.y, z: v.z }
@@ -436,6 +487,7 @@ impl {{ self_t }} {
 
     /// Creates a 4D vector from `self` and the given `w` value.
     #[inline]
+    #[must_use]
     pub fn extend(self, w: {{ scalar_t }}) -> {{ vec4_t }} {
         {{ vec4_t }}::new(self.x, self.y, self.z, w)
     }
@@ -444,6 +496,7 @@ impl {{ self_t }} {
     ///
     /// Truncation may also be performed by using [`self.xy()`][crate::swizzles::Vec3Swizzles::xy()].
     #[inline]
+    #[must_use]
     pub fn truncate(self) -> {{ vec2_t }} {
         use crate::swizzles::Vec3Swizzles;
         self.xy()
@@ -457,6 +510,7 @@ impl {{ self_t }} {
     /// To truncate to [`Vec3A`] use [`Vec3A::from()`].
 {%- endif %}
     #[inline]
+    #[must_use]
     pub fn truncate(self) -> {{ vec3_t }} {
         use crate::swizzles::Vec4Swizzles;
         self.xyz()
@@ -465,6 +519,7 @@ impl {{ self_t }} {
 
     /// Computes the dot product of `self` and `rhs`.
     #[inline]
+    #[must_use]
     pub fn dot(self, rhs: Self) -> {{ scalar_t }} {
         {% if is_scalar %}
             {% for c in components %}
@@ -479,11 +534,12 @@ impl {{ self_t }} {
 
     /// Returns a vector where every component is the dot product of `self` and `rhs`.
     #[inline]
+    #[must_use]
     pub fn dot_into_vec(self, rhs: Self) -> Self {
         {% if is_sse2 %}
             Self(unsafe { dot{{ dim }}_into_m128(self.0, rhs.0) })
         {% elif is_wasm32 %}
-            Self(unsafe { dot{{ dim }}_into_v128(self.0, rhs.0) })
+            Self(dot{{ dim }}_into_v128(self.0, rhs.0))
         {% elif is_coresimd %}
             Self(dot{{ dim }}_into_f32x4(self.0, rhs.0))
         {% else %}
@@ -494,6 +550,7 @@ impl {{ self_t }} {
 {% if dim == 3 %}
     /// Computes the cross product of `self` and `rhs`.
     #[inline]
+    #[must_use]
     pub fn cross(self, rhs: Self) -> Self {
         {% if is_scalar %}
             Self {
@@ -537,6 +594,7 @@ impl {{ self_t }} {
     ///
     /// In other words this computes `[self.x.min(rhs.x), self.y.min(rhs.y), ..]`.
     #[inline]
+    #[must_use]
     pub fn min(self, rhs: Self) -> Self {
         {% if is_scalar %}
             Self {
@@ -557,6 +615,7 @@ impl {{ self_t }} {
     ///
     /// In other words this computes `[self.x.max(rhs.x), self.y.max(rhs.y), ..]`.
     #[inline]
+    #[must_use]
     pub fn max(self, rhs: Self) -> Self {
         {% if is_scalar %}
             Self {
@@ -581,6 +640,7 @@ impl {{ self_t }} {
     ///
     /// Will panic if `min` is greater than `max` when `glam_assert` is enabled.
     #[inline]
+    #[must_use]
     pub fn clamp(self, min: Self, max: Self) -> Self {
         glam_assert!(min.cmple(max).all(), "clamp: expected min <= max");
         self.max(min).min(max)
@@ -590,6 +650,7 @@ impl {{ self_t }} {
     ///
     /// In other words this computes `min(x, y, ..)`.
     #[inline]
+    #[must_use]
     pub fn min_element(self) -> {{ scalar_t }} {
         {% if is_scalar %}
             {% if dim == 2 %}
@@ -643,6 +704,7 @@ impl {{ self_t }} {
     ///
     /// In other words this computes `max(x, y, ..)`.
     #[inline]
+    #[must_use]
     pub fn max_element(self) -> {{ scalar_t }} {
         {% if is_scalar %}
             {% if dim == 2 %}
@@ -698,6 +760,7 @@ impl {{ self_t }} {
     /// In other words, this computes `[self.x == rhs.x, self.y == rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmpeq(self, rhs: Self) -> {{ mask_t }} {
         {% if is_scalar %}
             {{ mask_t }}::new(
@@ -720,6 +783,7 @@ impl {{ self_t }} {
     /// In other words this computes `[self.x != rhs.x, self.y != rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmpne(self, rhs: Self) -> {{ mask_t }} {
         {% if is_scalar %}
             {{ mask_t }}::new(
@@ -742,6 +806,7 @@ impl {{ self_t }} {
     /// In other words this computes `[self.x >= rhs.x, self.y >= rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmpge(self, rhs: Self) -> {{ mask_t }} {
         {% if is_scalar %}
             {{ mask_t }}::new(
@@ -764,6 +829,7 @@ impl {{ self_t }} {
     /// In other words this computes `[self.x > rhs.x, self.y > rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmpgt(self, rhs: Self) -> {{ mask_t }} {
         {% if is_scalar %}
             {{ mask_t }}::new(
@@ -786,6 +852,7 @@ impl {{ self_t }} {
     /// In other words this computes `[self.x <= rhs.x, self.y <= rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmple(self, rhs: Self) -> {{ mask_t }} {
         {% if is_scalar %}
             {{ mask_t }}::new(
@@ -808,6 +875,7 @@ impl {{ self_t }} {
     /// In other words this computes `[self.x < rhs.x, self.y < rhs.y, ..]` for all
     /// elements.
     #[inline]
+    #[must_use]
     pub fn cmplt(self, rhs: Self) -> {{ mask_t }} {
         {% if is_scalar %}
             {{ mask_t }}::new(
@@ -827,6 +895,7 @@ impl {{ self_t }} {
 {% if is_signed %}
     /// Returns a vector containing the absolute value of each element of `self`.
     #[inline]
+    #[must_use]
     pub fn abs(self) -> Self {
         {% if is_scalar %}
             Self {
@@ -859,6 +928,7 @@ impl {{ self_t }} {
     ///  - `-1` if the number is negative
     {%- endif %}
     #[inline]
+    #[must_use]
     pub fn signum(self) -> Self {
         {% if is_scalar %}
             Self {
@@ -890,6 +960,7 @@ impl {{ self_t }} {
     {% if is_float %}
     /// Returns a vector with signs of `rhs` and the magnitudes of `self`.
     #[inline]
+    #[must_use]
     pub fn copysign(self, rhs: Self) -> Self {
         {% if is_scalar %}
             Self {
@@ -918,6 +989,7 @@ impl {{ self_t }} {
     /// A negative element results in a `1` bit and a positive element in a `0` bit.  Element `x` goes
     /// into the first lowest bit, element `y` into the second, etc.
     #[inline]
+    #[must_use]
     pub fn is_negative_bitmask(self) -> u32 {
         {% if is_scalar and is_float %}
             {% for c in components %}
@@ -961,6 +1033,7 @@ impl {{ self_t }} {
     /// Returns `true` if, and only if, all elements are finite.  If any element is either
     /// `NaN`, positive or negative infinity, this will return `false`.
     #[inline]
+    #[must_use]
     pub fn is_finite(self) -> bool {
         {% if is_coresimd %}
             {% if dim == 3 %}
@@ -977,6 +1050,7 @@ impl {{ self_t }} {
 
     /// Returns `true` if any elements are `NaN`.
     #[inline]
+    #[must_use]
     pub fn is_nan(self) -> bool {
         {% if is_scalar %}
             {% for c in components %}
@@ -991,6 +1065,7 @@ impl {{ self_t }} {
     ///
     /// In other words, this computes `[x.is_nan(), y.is_nan(), z.is_nan(), w.is_nan()]`.
     #[inline]
+    #[must_use]
     pub fn is_nan_mask(self) -> {{ mask_t }} {
         {% if is_scalar %}
             {{ mask_t }}::new(
@@ -1010,6 +1085,7 @@ impl {{ self_t }} {
     /// Computes the length of `self`.
     #[doc(alias = "magnitude")]
     #[inline]
+    #[must_use]
     pub fn length(self) -> {{ scalar_t }} {
         {% if is_scalar %}
             math::sqrt(self.dot(self))
@@ -1035,6 +1111,7 @@ impl {{ self_t }} {
 {%- endif %}
     #[doc(alias = "magnitude2")]
     #[inline]
+    #[must_use]
     pub fn length_squared(self) -> {{ scalar_t }} {
         self.dot(self)
     }
@@ -1044,6 +1121,7 @@ impl {{ self_t }} {
     ///
     /// For valid results, `self` must _not_ be of length zero.
     #[inline]
+    #[must_use]
     pub fn length_recip(self) -> {{ scalar_t }} {
         {% if is_scalar %}
             self.length().recip()
@@ -1063,6 +1141,7 @@ impl {{ self_t }} {
 
     /// Computes the Euclidean distance between two points in space.
     #[inline]
+    #[must_use]
     pub fn distance(self, rhs: Self) -> {{ scalar_t }} {
         (self - rhs).length()
     }
@@ -1071,6 +1150,7 @@ impl {{ self_t }} {
 {% if is_signed %}
     /// Compute the squared euclidean distance between two points in space.
     #[inline]
+    #[must_use]
     pub fn distance_squared(self, rhs: Self) -> {{ scalar_t }} {
         (self - rhs).length_squared()
     }
@@ -1082,6 +1162,7 @@ impl {{ self_t }} {
     /// This function will panic if any `rhs` element is 0 or the division results in overflow.
     {%- endif %}
     #[inline]
+    #[must_use]
     pub fn div_euclid(self, rhs: Self) -> Self {
         Self::new(
             {% for c in components %}
@@ -1103,6 +1184,7 @@ impl {{ self_t }} {
     ///
     /// [Euclidean division]: {{scalar_t}}::rem_euclid
     #[inline]
+    #[must_use]
     pub fn rem_euclid(self, rhs: Self) -> Self {
         Self::new(
             {% for c in components %}
@@ -1126,8 +1208,8 @@ impl {{ self_t }} {
     /// Panics
     ///
     /// Will panic if `self` is zero length when `glam_assert` is enabled.
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn normalize(self) -> Self {
         {% if is_scalar %}
             #[allow(clippy::let_and_return)]
@@ -1163,8 +1245,8 @@ impl {{ self_t }} {
     /// the result of this operation will be `None`.
     ///
     /// See also [`Self::normalize_or_zero()`].
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn try_normalize(self) -> Option<Self> {
         let rcp = self.length_recip();
         if rcp.is_finite() && rcp > 0.0 {
@@ -1180,8 +1262,8 @@ impl {{ self_t }} {
     /// the result of this operation will be zero.
     ///
     /// See also [`Self::try_normalize()`].
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn normalize_or_zero(self) -> Self {
         let rcp = self.length_recip();
         if rcp.is_finite() && rcp > 0.0 {
@@ -1193,8 +1275,9 @@ impl {{ self_t }} {
 
     /// Returns whether `self` is length `1.0` or not.
     ///
-    /// Uses a precision threshold of `1e-6`.
+    /// Uses a precision threshold of `1e-4`.
     #[inline]
+    #[must_use]
     pub fn is_normalized(self) -> bool {
         // TODO: do something with epsilon
         math::abs(self.length_squared() - 1.0) <= 1e-4
@@ -1207,8 +1290,8 @@ impl {{ self_t }} {
     /// # Panics
     ///
     /// Will panic if `rhs` is zero length when `glam_assert` is enabled.
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn project_onto(self, rhs: Self) -> Self {
         let other_len_sq_rcp = rhs.dot(rhs).recip();
         glam_assert!(other_len_sq_rcp.is_finite());
@@ -1225,8 +1308,8 @@ impl {{ self_t }} {
     /// # Panics
     ///
     /// Will panic if `rhs` has a length of zero when `glam_assert` is enabled.
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn reject_from(self, rhs: Self) -> Self {
         self - self.project_onto(rhs)
     }
@@ -1238,8 +1321,8 @@ impl {{ self_t }} {
     /// # Panics
     ///
     /// Will panic if `rhs` is not normalized when `glam_assert` is enabled.
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn project_onto_normalized(self, rhs: Self) -> Self {
         glam_assert!(rhs.is_normalized());
         rhs * self.dot(rhs)
@@ -1255,8 +1338,8 @@ impl {{ self_t }} {
     /// # Panics
     ///
     /// Will panic if `rhs` is not normalized when `glam_assert` is enabled.
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn reject_from_normalized(self, rhs: Self) -> Self {
         self - self.project_onto_normalized(rhs)
     }
@@ -1264,6 +1347,7 @@ impl {{ self_t }} {
     /// Returns a vector containing the nearest integer to a number for each element of `self`.
     /// Round half-way cases away from 0.0.
     #[inline]
+    #[must_use]
     pub fn round(self) -> Self {
         {% if is_scalar %}
             Self {
@@ -1283,6 +1367,7 @@ impl {{ self_t }} {
     /// Returns a vector containing the largest integer less than or equal to a number for each
     /// element of `self`.
     #[inline]
+    #[must_use]
     pub fn floor(self) -> Self {
         {% if is_scalar %}
             Self {
@@ -1302,6 +1387,7 @@ impl {{ self_t }} {
     /// Returns a vector containing the smallest integer greater than or equal to a number for
     /// each element of `self`.
     #[inline]
+    #[must_use]
     pub fn ceil(self) -> Self {
         {% if is_scalar %}
             Self {
@@ -1321,6 +1407,7 @@ impl {{ self_t }} {
     /// Returns a vector containing the integer part each element of `self`. This means numbers are
     /// always truncated towards zero.
     #[inline]
+    #[must_use]
     pub fn trunc(self) -> Self {
         {% if is_scalar %}
             Self {
@@ -1342,6 +1429,7 @@ impl {{ self_t }} {
     ///
     /// Note that this is fast but not precise for large numbers.
     #[inline]
+    #[must_use]
     pub fn fract(self) -> Self {
         self - self.floor()
     }
@@ -1349,6 +1437,7 @@ impl {{ self_t }} {
     /// Returns a vector containing `e^self` (the exponential function) for each element of
     /// `self`.
     #[inline]
+    #[must_use]
     pub fn exp(self) -> Self {
         Self::new(
             {% for c in components %}
@@ -1359,6 +1448,7 @@ impl {{ self_t }} {
 
     /// Returns a vector containing each element of `self` raised to the power of `n`.
     #[inline]
+    #[must_use]
     pub fn powf(self, n: {{ scalar_t }}) -> Self {
         Self::new(
             {% for c in components %}
@@ -1369,6 +1459,7 @@ impl {{ self_t }} {
 
     /// Returns a vector containing the reciprocal `1.0/n` of each element of `self`.
     #[inline]
+    #[must_use]
     pub fn recip(self) -> Self {
         {% if is_scalar %}
             Self {
@@ -1392,8 +1483,19 @@ impl {{ self_t }} {
     /// extrapolated.
     #[doc(alias = "mix")]
     #[inline]
+    #[must_use]
     pub fn lerp(self, rhs: Self, s: {{ scalar_t }}) -> Self {
         self + ((rhs - self) * s)
+    }
+
+    /// Calculates the midpoint between `self` and `rhs`. 
+    ///
+    /// The midpoint is the average of, or halfway point between, two vectors.
+    /// `a.midpoint(b)` should yield the same result as `a.lerp(b, 0.5)`
+    /// while being slightly cheaper to compute.
+    #[inline]
+    pub fn midpoint(self, rhs: Self) -> Self {
+        (self + rhs) * 0.5
     }
 
     /// Returns true if the absolute difference of all elements between `self` and `rhs` is
@@ -1406,6 +1508,7 @@ impl {{ self_t }} {
     /// For more see
     /// [comparing floating point numbers](https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/).
     #[inline]
+    #[must_use]
     pub fn abs_diff_eq(self, rhs: Self, max_abs_diff: {{ scalar_t }}) -> bool {
         self.sub(rhs).abs().cmple(Self::splat(max_abs_diff)).all()
     }
@@ -1416,6 +1519,7 @@ impl {{ self_t }} {
     ///
     /// Will panic if `min` is greater than `max` when `glam_assert` is enabled.
     #[inline]
+    #[must_use]
     pub fn clamp_length(self, min: {{ scalar_t }}, max: {{ scalar_t }}) -> Self {
         glam_assert!(min <= max);
         let length_sq = self.length_squared();
@@ -1429,6 +1533,8 @@ impl {{ self_t }} {
     }
 
     /// Returns a vector with a length no more than `max`
+    #[inline]
+    #[must_use]
     pub fn clamp_length_max(self, max: {{ scalar_t }}) -> Self {
         let length_sq = self.length_squared();
         if length_sq > max * max {
@@ -1439,6 +1545,8 @@ impl {{ self_t }} {
     }
 
     /// Returns a vector with a length no less than `min`
+    #[inline]
+    #[must_use]
     pub fn clamp_length_min(self, min: {{ scalar_t }}) -> Self {
         let length_sq = self.length_squared();
         if length_sq < min * min {
@@ -1456,6 +1564,7 @@ impl {{ self_t }} {
     /// and will be heavily dependant on designing algorithms with specific target hardware in
     /// mind.
     #[inline]
+    #[must_use]
     pub fn mul_add(self, a: Self, b: Self) -> Self {
         {% if is_sse2 %}
             #[cfg(target_feature = "fma")]
@@ -1479,6 +1588,7 @@ impl {{ self_t }} {
     /// `{{ vec2_t }}::from_angle(PI).rotate({{ vec2_t }}::Y)` will create the vector `[-1, 0]`
     /// and rotate [`{{ vec2_t }}::Y`] around it returning `-{{ vec2_t }}::Y`.
     #[inline]
+    #[must_use]
     pub fn from_angle(angle: {{ scalar_t }}) -> Self {
         let (sin, cos) = math::sin_cos(angle);
         Self {
@@ -1491,6 +1601,7 @@ impl {{ self_t }} {
     ///
     /// The input does not need to be a unit vector however it must be non-zero.
     #[inline]
+    #[must_use]
     pub fn to_angle(self) -> {{ scalar_t }} {
         math::atan2(self.y, self.x)
     }
@@ -1499,6 +1610,7 @@ impl {{ self_t }} {
     ///
     /// The inputs do not need to be unit vectors however they must be non-zero.
     #[inline]
+    #[must_use]
     pub fn angle_between(self, rhs: Self) -> {{ scalar_t }} {
         let angle = math::acos_approx(
             self.dot(rhs) / math::sqrt(self.length_squared() * rhs.length_squared()));
@@ -1510,6 +1622,7 @@ impl {{ self_t }} {
     ///
     /// The inputs do not need to be unit vectors however they must be non-zero.
     #[inline]
+    #[must_use]
     pub fn angle_between(self, rhs: Self) -> {{ scalar_t }} {
         math::acos_approx(
             self.dot(rhs).div(
@@ -1523,6 +1636,7 @@ impl {{ self_t }} {
     /// The output vector is not necessarily unit length. For that use
     /// [`Self::any_orthonormal_vector()`] instead.
     #[inline]
+    #[must_use]
     pub fn any_orthogonal_vector(&self) -> Self {
         // This can probably be optimized
         if math::abs(self.x) > math::abs(self.y) {
@@ -1540,6 +1654,7 @@ impl {{ self_t }} {
     ///
     /// Will panic if `self` is not normalized when `glam_assert` is enabled.
     #[inline]
+    #[must_use]
     pub fn any_orthonormal_vector(&self) -> Self {
         glam_assert!(self.is_normalized());
         // From https://graphics.pixar.com/library/OrthonormalB/paper.pdf
@@ -1556,6 +1671,7 @@ impl {{ self_t }} {
     ///
     /// Will panic if `self` is not normalized when `glam_assert` is enabled.
     #[inline]
+    #[must_use]
     pub fn any_orthonormal_pair(&self) -> (Self, Self) {
         glam_assert!(self.is_normalized());
         // From https://graphics.pixar.com/library/OrthonormalB/paper.pdf
@@ -1573,6 +1689,7 @@ impl {{ self_t }} {
 {% if is_signed and dim == 2 %}
     /// Returns a vector that is equal to `self` rotated by 90 degrees.
     #[inline]
+    #[must_use]
     pub fn perp(self) -> Self {
         Self {
             x: -self.y,
@@ -1586,6 +1703,7 @@ impl {{ self_t }} {
     #[doc(alias = "cross")]
     #[doc(alias = "determinant")]
     #[inline]
+    #[must_use]
     pub fn perp_dot(self, rhs: Self) -> {{ scalar_t }} {
         (self.x * rhs.y) - (self.y * rhs.x)
     }
@@ -1593,8 +1711,8 @@ impl {{ self_t }} {
     /// Returns `rhs` rotated by the angle of `self`. If `self` is normalized,
     /// then this just rotation. This is what you usually want. Otherwise,
     /// it will be like a rotation with a multiplication by `self`'s length.
-    #[must_use]
     #[inline]
+    #[must_use]
     pub fn rotate(self, rhs: Self) -> Self {
         Self {
             x: self.x * rhs.x - self.y * rhs.y,
@@ -1607,24 +1725,28 @@ impl {{ self_t }} {
     {% if dim == 2 %}
     /// Casts all elements of `self` to `f32`.
     #[inline]
+    #[must_use]
     pub fn as_vec2(&self) -> crate::Vec2 {
         crate::Vec2::new(self.x as f32, self.y as f32)
     }
     {% elif dim == 3 %}
     /// Casts all elements of `self` to `f32`.
     #[inline]
+    #[must_use]
     pub fn as_vec3(&self) -> crate::Vec3 {
         crate::Vec3::new(self.x as f32, self.y as f32, self.z as f32)
     }
 
     /// Casts all elements of `self` to `f32`.
     #[inline]
+    #[must_use]
     pub fn as_vec3a(&self) -> crate::Vec3A {
         crate::Vec3A::new(self.x as f32, self.y as f32, self.z as f32)
     }
     {% elif dim == 4 %}
     /// Casts all elements of `self` to `f32`.
     #[inline]
+    #[must_use]
     pub fn as_vec4(&self) -> crate::Vec4 {
         crate::Vec4::new(self.x as f32, self.y as f32, self.z as f32, self.w as f32)
     }
@@ -1634,20 +1756,71 @@ impl {{ self_t }} {
     {% if dim == 2 %}
     /// Casts all elements of `self` to `f64`.
     #[inline]
+    #[must_use]
     pub fn as_dvec2(&self) -> crate::DVec2 {
         crate::DVec2::new(self.x as f64, self.y as f64)
     }
     {% elif dim == 3 %}
     /// Casts all elements of `self` to `f64`.
     #[inline]
+    #[must_use]
     pub fn as_dvec3(&self) -> crate::DVec3 {
         crate::DVec3::new(self.x as f64, self.y as f64, self.z as f64)
     }
     {% elif dim == 4 %}
     /// Casts all elements of `self` to `f64`.
     #[inline]
+    #[must_use]
     pub fn as_dvec4(&self) -> crate::DVec4 {
         crate::DVec4::new(self.x as f64, self.y as f64, self.z as f64, self.w as f64)
+    }
+    {% endif %}
+{% endif %}
+{% if scalar_t != "i16" %}
+    {% if dim == 2 %}
+    /// Casts all elements of `self` to `i16`.
+    #[inline]
+    #[must_use]
+    pub fn as_i16vec2(&self) -> crate::I16Vec2 {
+        crate::I16Vec2::new(self.x as i16, self.y as i16)
+    }
+    {% elif dim == 3 %}
+    /// Casts all elements of `self` to `i16`.
+    #[inline]
+    #[must_use]
+    pub fn as_i16vec3(&self) -> crate::I16Vec3 {
+        crate::I16Vec3::new(self.x as i16, self.y as i16, self.z as i16)
+    }
+    {% elif dim == 4 %}
+    /// Casts all elements of `self` to `i16`.
+    #[inline]
+    #[must_use]
+    pub fn as_i16vec4(&self) -> crate::I16Vec4 {
+        crate::I16Vec4::new(self.x as i16, self.y as i16, self.z as i16, self.w as i16)
+    }
+    {% endif %}
+{% endif %}
+{% if scalar_t != "u16" %}
+    {% if dim == 2 %}
+    /// Casts all elements of `self` to `u16`.
+    #[inline]
+    #[must_use]
+    pub fn as_u16vec2(&self) -> crate::U16Vec2 {
+        crate::U16Vec2::new(self.x as u16, self.y as u16)
+    }
+    {% elif dim == 3 %}
+    /// Casts all elements of `self` to `u16`.
+    #[inline]
+    #[must_use]
+    pub fn as_u16vec3(&self) -> crate::U16Vec3 {
+        crate::U16Vec3::new(self.x as u16, self.y as u16, self.z as u16)
+    }
+    {% elif dim == 4 %}
+    /// Casts all elements of `self` to `u16`.
+    #[inline]
+    #[must_use]
+    pub fn as_u16vec4(&self) -> crate::U16Vec4 {
+        crate::U16Vec4::new(self.x as u16, self.y as u16, self.z as u16, self.w as u16)
     }
     {% endif %}
 {% endif %}
@@ -1655,18 +1828,21 @@ impl {{ self_t }} {
     {% if dim == 2 %}
     /// Casts all elements of `self` to `i32`.
     #[inline]
+    #[must_use]
     pub fn as_ivec2(&self) -> crate::IVec2 {
         crate::IVec2::new(self.x as i32, self.y as i32)
     }
     {% elif dim == 3 %}
     /// Casts all elements of `self` to `i32`.
     #[inline]
+    #[must_use]
     pub fn as_ivec3(&self) -> crate::IVec3 {
         crate::IVec3::new(self.x as i32, self.y as i32, self.z as i32)
     }
     {% elif dim == 4 %}
     /// Casts all elements of `self` to `i32`.
     #[inline]
+    #[must_use]
     pub fn as_ivec4(&self) -> crate::IVec4 {
         crate::IVec4::new(self.x as i32, self.y as i32, self.z as i32, self.w as i32)
     }
@@ -1676,18 +1852,21 @@ impl {{ self_t }} {
     {% if dim == 2 %}
     /// Casts all elements of `self` to `u32`.
     #[inline]
+    #[must_use]
     pub fn as_uvec2(&self) -> crate::UVec2 {
         crate::UVec2::new(self.x as u32, self.y as u32)
     }
     {% elif dim == 3 %}
     /// Casts all elements of `self` to `u32`.
     #[inline]
+    #[must_use]
     pub fn as_uvec3(&self) -> crate::UVec3 {
         crate::UVec3::new(self.x as u32, self.y as u32, self.z as u32)
     }
     {% elif dim == 4 %}
     /// Casts all elements of `self` to `u32`.
     #[inline]
+    #[must_use]
     pub fn as_uvec4(&self) -> crate::UVec4 {
         crate::UVec4::new(self.x as u32, self.y as u32, self.z as u32, self.w as u32)
     }
@@ -1697,18 +1876,21 @@ impl {{ self_t }} {
     {% if dim == 2 %}
     /// Casts all elements of `self` to `i64`.
     #[inline]
+    #[must_use]
     pub fn as_i64vec2(&self) -> crate::I64Vec2 {
         crate::I64Vec2::new(self.x as i64, self.y as i64)
     }
     {% elif dim == 3 %}
     /// Casts all elements of `self` to `i64`.
     #[inline]
+    #[must_use]
     pub fn as_i64vec3(&self) -> crate::I64Vec3 {
         crate::I64Vec3::new(self.x as i64, self.y as i64, self.z as i64)
     }
     {% elif dim == 4 %}
     /// Casts all elements of `self` to `i64`.
     #[inline]
+    #[must_use]
     pub fn as_i64vec4(&self) -> crate::I64Vec4 {
         crate::I64Vec4::new(self.x as i64, self.y as i64, self.z as i64, self.w as i64)
     }
@@ -1718,18 +1900,21 @@ impl {{ self_t }} {
     {% if dim == 2 %}
     /// Casts all elements of `self` to `u64`.
     #[inline]
+    #[must_use]
     pub fn as_u64vec2(&self) -> crate::U64Vec2 {
         crate::U64Vec2::new(self.x as u64, self.y as u64)
     }
     {% elif dim == 3 %}
     /// Casts all elements of `self` to `u64`.
     #[inline]
+    #[must_use]
     pub fn as_u64vec3(&self) -> crate::U64Vec3 {
         crate::U64Vec3::new(self.x as u64, self.y as u64, self.z as u64)
     }
     {% elif dim == 4 %}
     /// Casts all elements of `self` to `u64`.
     #[inline]
+    #[must_use]
     pub fn as_u64vec4(&self) -> crate::U64Vec4 {
         crate::U64Vec4::new(self.x as u64, self.y as u64, self.z as u64, self.w as u64)
     }
@@ -1840,6 +2025,85 @@ impl {{ self_t }} {
             {%- endfor %}
         }
     }
+    {% if is_signed %}
+        /// Returns a vector containing the wrapping addition of `self` and unsigned vector `rhs`.
+        ///
+        /// In other words this computes `[self.x.wrapping_add_unsigned(rhs.x), self.y.wrapping_add_unsigned(rhs.y), ..]`.
+        #[inline]
+        #[must_use]
+        pub const fn wrapping_add_unsigned(self, rhs: {{ opposite_signedness_t }}) -> Self {
+            Self {
+                {% for c in components %}
+                    {{ c }}: self.{{ c }}.wrapping_add_unsigned(rhs.{{ c }}),
+                {%- endfor %}
+            }
+        }
+
+        /// Returns a vector containing the wrapping subtraction of `self` and unsigned vector `rhs`.
+        ///
+        /// In other words this computes `[self.x.wrapping_sub_unsigned(rhs.x), self.y.wrapping_sub_unsigned(rhs.y), ..]`.
+        #[inline]
+        #[must_use]
+        pub const fn wrapping_sub_unsigned(self, rhs: {{ opposite_signedness_t }}) -> Self {
+            Self {
+                {% for c in components %}
+                    {{ c }}: self.{{ c }}.wrapping_sub_unsigned(rhs.{{ c }}),
+                {%- endfor %}
+            }
+        }
+
+        // Returns a vector containing the saturating addition of `self` and unsigned vector `rhs`.
+        ///
+        /// In other words this computes `[self.x.saturating_add_unsigned(rhs.x), self.y.saturating_add_unsigned(rhs.y), ..]`.
+        #[inline]
+        #[must_use]
+        pub const fn saturating_add_unsigned(self, rhs: {{ opposite_signedness_t }}) -> Self {
+            Self {
+                {% for c in components %}
+                    {{ c }}: self.{{ c }}.saturating_add_unsigned(rhs.{{ c }}),
+                {%- endfor %}
+            }
+        }
+
+        /// Returns a vector containing the saturating subtraction of `self` and unsigned vector `rhs`.
+        ///
+        /// In other words this computes `[self.x.saturating_sub_unsigned(rhs.x), self.y.saturating_sub_unsigned(rhs.y), ..]`.
+        #[inline]
+        #[must_use]
+        pub const fn saturating_sub_unsigned(self, rhs: {{ opposite_signedness_t }}) -> Self {
+            Self {
+                {% for c in components %}
+                    {{ c }}: self.{{ c }}.saturating_sub_unsigned(rhs.{{ c }}),
+                {%- endfor %}
+            }
+        }
+    {% else %}
+        /// Returns a vector containing the wrapping addition of `self` and signed vector `rhs`.
+        ///
+        /// In other words this computes `[self.x.wrapping_add_signed(rhs.x), self.y.wrapping_add_signed(rhs.y), ..]`.
+        #[inline]
+        #[must_use]
+        pub const fn wrapping_add_signed(self, rhs: {{ opposite_signedness_t }}) -> Self {
+            Self {
+                {% for c in components %}
+                    {{ c }}: self.{{ c }}.wrapping_add_signed(rhs.{{ c }}),
+                {%- endfor %}
+            }
+        }
+
+        /// Returns a vector containing the saturating addition of `self` and signed vector `rhs`.
+        ///
+        /// In other words this computes `[self.x.saturating_add_signed(rhs.x), self.y.saturating_add_signed(rhs.y), ..]`.
+        #[inline]
+        #[must_use]
+        pub const fn saturating_add_signed(self, rhs: {{ opposite_signedness_t }}) -> Self {
+            Self {
+                {% for c in components %}
+                    {{ c }}: self.{{ c }}.saturating_add_signed(rhs.{{ c }}),
+                {%- endfor %}
+            }
+        }
+    {% endif %}
 {% endif %}
 }
 
