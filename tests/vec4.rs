@@ -52,6 +52,43 @@ macro_rules! impl_vec4_tests {
             let v = $vec4::new(t.0, t.1, t.2, t.3);
             assert_eq!(t, v.into());
 
+            assert_eq!(
+                $vec4::new(1 as $t, 0 as $t, 0 as $t, 0 as $t),
+                glam::BVec4::new(true, false, false, false).into()
+            );
+            assert_eq!(
+                $vec4::new(0 as $t, 1 as $t, 0 as $t, 0 as $t),
+                glam::BVec4::new(false, true, false, false).into()
+            );
+            assert_eq!(
+                $vec4::new(0 as $t, 0 as $t, 1 as $t, 0 as $t),
+                glam::BVec4::new(false, false, true, false).into()
+            );
+
+            #[cfg(not(feature = "scalar-math"))]
+            {
+                assert_eq!(
+                    $vec4::new(0 as $t, 0 as $t, 0 as $t, 1 as $t),
+                    glam::BVec4::new(false, false, false, true).into()
+                );
+                assert_eq!(
+                    $vec4::new(1 as $t, 0 as $t, 0 as $t, 0 as $t),
+                    glam::BVec4A::new(true, false, false, false).into()
+                );
+                assert_eq!(
+                    $vec4::new(0 as $t, 1 as $t, 0 as $t, 0 as $t),
+                    glam::BVec4A::new(false, true, false, false).into()
+                );
+                assert_eq!(
+                    $vec4::new(0 as $t, 0 as $t, 1 as $t, 0 as $t),
+                    glam::BVec4A::new(false, false, true, false).into()
+                );
+                assert_eq!(
+                    $vec4::new(0 as $t, 0 as $t, 0 as $t, 1 as $t),
+                    glam::BVec4A::new(false, false, false, true).into()
+                );
+            }
+
             assert_eq!($vec4::new(1 as $t, 0 as $t, 0 as $t, 0 as $t), $vec4::X);
             assert_eq!($vec4::new(0 as $t, 1 as $t, 0 as $t, 0 as $t), $vec4::Y);
             assert_eq!($vec4::new(0 as $t, 0 as $t, 1 as $t, 0 as $t), $vec4::Z);
@@ -113,6 +150,13 @@ macro_rules! impl_vec4_tests {
         glam_test!(test_splat, {
             let v = $vec4::splat(1 as $t);
             assert_eq!($vec4::ONE, v);
+        });
+
+        glam_test!(test_with, {
+            assert_eq!($vec4::X, $vec4::ZERO.with_x(1 as $t));
+            assert_eq!($vec4::Y, $vec4::ZERO.with_y(1 as $t));
+            assert_eq!($vec4::Z, $vec4::ZERO.with_z(1 as $t));
+            assert_eq!($vec4::W, $vec4::ZERO.with_w(1 as $t));
         });
 
         glam_test!(test_accessors, {
@@ -295,6 +339,12 @@ macro_rules! impl_vec4_tests {
             );
         });
 
+        glam_test!(test_sum_product, {
+            let a = $new(2 as $t, 3 as $t, 5 as $t, 7 as $t);
+            assert_eq!(a.element_sum(), 17 as $t);
+            assert_eq!(a.element_product(), 210 as $t);
+        });
+
         glam_test!(test_eq, {
             let a = $new(1 as $t, 1 as $t, 1 as $t, 1 as $t);
             let b = $new(1 as $t, 2 as $t, 3 as $t, 4 as $t);
@@ -350,6 +400,32 @@ macro_rules! impl_vec4_tests {
             should_panic!({ $vec4::from_slice(&[0 as $t; 3]) });
         });
 
+        glam_test!(test_mask_from_array_bool, {
+            assert_eq!(
+                $mask::new(false, false, false, false),
+                $mask::from([false, false, false, false])
+            );
+            assert_eq!(
+                $mask::new(false, false, true, true),
+                $mask::from([false, false, true, true])
+            );
+            assert_eq!(
+                $mask::new(true, true, false, false),
+                $mask::from([true, true, false, false])
+            );
+            assert_eq!(
+                $mask::new(false, true, false, true),
+                $mask::from([false, true, false, true])
+            );
+            assert_eq!(
+                $mask::new(true, false, true, false),
+                $mask::from([true, false, true, false])
+            );
+            assert_eq!(
+                $mask::new(true, true, true, true),
+                $mask::from([true, true, true, true])
+            );
+        });
         glam_test!(test_mask_into_array_u32, {
             assert_eq!(
                 Into::<[u32; 4]>::into($mask::new(false, false, false, false)),
@@ -954,14 +1030,26 @@ macro_rules! impl_vec4_float_tests {
             );
         });
 
-        glam_test!(test_fract, {
+        glam_test!(test_fract_gl, {
             assert_approx_eq!(
-                $vec4::new(1.35, 1.5, -1.5, 1.999).fract(),
+                $vec4::new(1.35, 1.5, -1.5, 1.999).fract_gl(),
                 $vec4::new(0.35, 0.5, 0.5, 0.999)
             );
             assert_approx_eq!(
-                $vec4::new(-0.0, -200000.123, 1000000.123, 1000.9).fract(),
+                $vec4::new(-0.0, -200000.123, 1000000.123, 1000.9).fract_gl(),
                 $vec4::new(0.0, 0.877, 0.123, 0.9),
+                0.002
+            );
+        });
+
+        glam_test!(test_fract, {
+            assert_approx_eq!(
+                $vec4::new(1.35, 1.5, -1.5, 1.999).fract(),
+                $vec4::new(0.35, 0.5, -0.5, 0.999)
+            );
+            assert_approx_eq!(
+                $vec4::new(-0.0, -200000.123, 1000000.123, 1000.9).fract(),
+                $vec4::new(0.0, -0.123, 0.123, 0.9),
                 0.002
             );
         });
@@ -1004,6 +1092,14 @@ macro_rules! impl_vec4_float_tests {
             assert_approx_eq!(v0, v0.lerp(v1, 0.0));
             assert_approx_eq!(v1, v0.lerp(v1, 1.0));
             assert_approx_eq!($vec4::ZERO, v0.lerp(v1, 0.5));
+        });
+
+        glam_test!(test_move_towards, {
+            let v0 = $vec4::new(-1.0, -1.0, -1.0, -1.0);
+            let v1 = $vec4::new(1.0, 1.0, 1.0, 1.0);
+            assert_approx_eq!(v0, v0.move_towards(v1, 0.0));
+            assert_approx_eq!(v1, v0.move_towards(v1, v0.distance(v1)));
+            assert_approx_eq!(v1, v0.move_towards(v1, v0.distance(v1) + 1.0));
         });
 
         glam_test!(test_midpoint, {
@@ -1098,6 +1194,11 @@ macro_rules! impl_vec4_float_tests {
                 ),
                 $vec4::new(-0.5, 1.0, -5.0, -1.0)
             );
+        });
+
+        glam_test!(test_fmt_float, {
+            let a = $vec4::new(1.0, 2.0, 3.0, 4.0);
+            assert_eq!(format!("{:.2}", a), "[1.00, 2.00, 3.00, 4.00]");
         });
     };
 }

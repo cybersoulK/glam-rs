@@ -285,10 +285,10 @@ impl Quat {
         const ONE_MINUS_EPS: f32 = 1.0 - 2.0 * core::f32::EPSILON;
         let dot = from.dot(to);
         if dot > ONE_MINUS_EPS {
-            // 0° singulary: from ≈ to
+            // 0° singularity: from ≈ to
             Self::IDENTITY
         } else if dot < -ONE_MINUS_EPS {
-            // 180° singulary: from ≈ -to
+            // 180° singularity: from ≈ -to
             use core::f32::consts::PI; // half a turn = 𝛕/2 = 180°
             Self::from_axis_angle(from.any_orthonormal_vector(), PI)
         } else {
@@ -341,10 +341,10 @@ impl Quat {
         const ONE_MINUS_EPSILON: f32 = 1.0 - 2.0 * core::f32::EPSILON;
         let dot = from.dot(to);
         if dot > ONE_MINUS_EPSILON {
-            // 0° singulary: from ≈ to
+            // 0° singularity: from ≈ to
             Self::IDENTITY
         } else if dot < -ONE_MINUS_EPSILON {
-            // 180° singulary: from ≈ -to
+            // 180° singularity: from ≈ -to
             const COS_FRAC_PI_2: f32 = 0.0;
             const SIN_FRAC_PI_2: f32 = 1.0;
             // rotation around z by PI radians
@@ -761,8 +761,16 @@ impl fmt::Debug for Quat {
 
 #[cfg(not(target_arch = "spirv"))]
 impl fmt::Display for Quat {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "[{}, {}, {}, {}]", self.x, self.y, self.z, self.w)
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(p) = f.precision() {
+            write!(
+                f,
+                "[{:.*}, {:.*}, {:.*}, {:.*}]",
+                p, self.x, p, self.y, p, self.z, p, self.w
+            )
+        } else {
+            write!(f, "[{}, {}, {}, {}]", self.x, self.y, self.z, self.w)
+        }
     }
 }
 

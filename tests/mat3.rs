@@ -300,6 +300,8 @@ macro_rules! impl_mat3_tests {
             ]);
             assert_eq!(m0x2, m0 * 2.0);
             assert_eq!(m0x2, 2.0 * m0);
+            assert_eq!(m0, m0x2 / 2.0);
+            assert_eq!(m0, 2.0 / m0x2);
             assert_eq!(m0x2, m0 + m0);
             assert_eq!($mat3::ZERO, m0 - m0);
             assert_eq!(m0_neg, -m0);
@@ -309,6 +311,10 @@ macro_rules! impl_mat3_tests {
             let mut m1 = m0;
             m1 *= 2.0;
             assert_eq!(m0x2, m1);
+
+            let mut m1 = m0x2;
+            m1 /= 2.0;
+            assert_eq!(m0, m1);
 
             let mut m1 = m0;
             m1 += m0;
@@ -326,6 +332,10 @@ macro_rules! impl_mat3_tests {
         glam_test!(test_mat3_fmt, {
             let a = $mat3::from_cols_array_2d(&MATRIX);
             assert_eq!(format!("{}", a), "[[1, 2, 3], [4, 5, 6], [7, 8, 9]]");
+            assert_eq!(
+                format!("{:.1}", a),
+                "[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]"
+            );
         });
 
         glam_test!(test_mat3_to_from_slice, {

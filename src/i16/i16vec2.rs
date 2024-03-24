@@ -127,6 +127,22 @@ impl I16Vec2 {
         I16Vec3::new(self.x, self.y, z)
     }
 
+    /// Creates a 2D vector from `self` with the given value of `x`.
+    #[inline]
+    #[must_use]
+    pub fn with_x(mut self, x: i16) -> Self {
+        self.x = x;
+        self
+    }
+
+    /// Creates a 2D vector from `self` with the given value of `y`.
+    #[inline]
+    #[must_use]
+    pub fn with_y(mut self, y: i16) -> Self {
+        self.y = y;
+        self
+    }
+
     /// Computes the dot product of `self` and `rhs`.
     #[inline]
     #[must_use]
@@ -195,6 +211,24 @@ impl I16Vec2 {
     #[must_use]
     pub fn max_element(self) -> i16 {
         self.x.max(self.y)
+    }
+
+    /// Returns the sum of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x + self.y + ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_sum(self) -> i16 {
+        self.x + self.y
+    }
+
+    /// Returns the product of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x * self.y * ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_product(self) -> i16 {
+        self.x * self.y
     }
 
     /// Returns a vector mask containing the result of a `==` comparison for each element of
@@ -1287,5 +1321,12 @@ impl TryFrom<U64Vec2> for I16Vec2 {
     #[inline]
     fn try_from(v: U64Vec2) -> Result<Self, Self::Error> {
         Ok(Self::new(i16::try_from(v.x)?, i16::try_from(v.y)?))
+    }
+}
+
+impl From<BVec2> for I16Vec2 {
+    #[inline]
+    fn from(v: BVec2) -> Self {
+        Self::new(i16::from(v.x), i16::from(v.y))
     }
 }

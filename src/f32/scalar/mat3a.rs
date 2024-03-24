@@ -4,7 +4,7 @@ use crate::{f32::math, swizzles::*, DMat3, EulerRot, Mat2, Mat3, Mat4, Quat, Vec
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
-use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 /// Creates a 3x3 matrix from three column vectors.
 #[inline(always)]
@@ -557,6 +557,18 @@ impl Mat3A {
         )
     }
 
+    /// Divides a 3x3 matrix by a scalar.
+    #[inline]
+    #[must_use]
+    pub fn div_scalar(&self, rhs: f32) -> Self {
+        let rhs = Vec3A::splat(rhs);
+        Self::from_cols(
+            self.x_axis.div(rhs),
+            self.y_axis.div(rhs),
+            self.z_axis.div(rhs),
+        )
+    }
+
     /// Returns true if the absolute difference of all elements between `self` and `rhs`
     /// is less than or equal to `max_abs_diff`.
     ///
@@ -572,6 +584,13 @@ impl Mat3A {
         self.x_axis.abs_diff_eq(rhs.x_axis, max_abs_diff)
             && self.y_axis.abs_diff_eq(rhs.y_axis, max_abs_diff)
             && self.z_axis.abs_diff_eq(rhs.z_axis, max_abs_diff)
+    }
+
+    /// Takes the absolute value of each element in `self`
+    #[inline]
+    #[must_use]
+    pub fn abs(&self) -> Self {
+        Self::from_cols(self.x_axis.abs(), self.y_axis.abs(), self.z_axis.abs())
     }
 
     #[inline]
@@ -675,6 +694,29 @@ impl MulAssign<f32> for Mat3A {
     }
 }
 
+impl Div<Mat3A> for f32 {
+    type Output = Mat3A;
+    #[inline]
+    fn div(self, rhs: Mat3A) -> Self::Output {
+        rhs.div_scalar(self)
+    }
+}
+
+impl Div<f32> for Mat3A {
+    type Output = Self;
+    #[inline]
+    fn div(self, rhs: f32) -> Self::Output {
+        self.div_scalar(rhs)
+    }
+}
+
+impl DivAssign<f32> for Mat3A {
+    #[inline]
+    fn div_assign(&mut self, rhs: f32) {
+        *self = self.div_scalar(rhs);
+    }
+}
+
 impl Mul<Vec3> for Mat3A {
     type Output = Vec3;
     #[inline]
@@ -751,6 +793,14 @@ impl fmt::Debug for Mat3A {
 #[cfg(not(target_arch = "spirv"))]
 impl fmt::Display for Mat3A {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}, {}, {}]", self.x_axis, self.y_axis, self.z_axis)
+        if let Some(p) = f.precision() {
+            write!(
+                f,
+                "[{:.*}, {:.*}, {:.*}]",
+                p, self.x_axis, p, self.y_axis, p, self.z_axis
+            )
+        } else {
+            write!(f, "[{}, {}, {}]", self.x_axis, self.y_axis, self.z_axis)
+        }
     }
 }

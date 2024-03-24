@@ -12,7 +12,7 @@ macro_rules! glam_test {
 #[macro_export]
 macro_rules! should_panic {
     ($block:block) => {{
-        #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+        #[cfg(all(feature = "std", panic = "unwind"))]
         assert!(std::panic::catch_unwind(|| $block).is_err());
     }};
 }
@@ -137,6 +137,29 @@ macro_rules! impl_vec_float_normalize_tests {
             assert_eq!(from_x_y(MAX, MAX).try_normalize(), None);
         });
 
+        glam_test!(test_normalize_or, {
+            assert_eq!(
+                from_x_y(-42.0, 0.0).normalize_or($vec::Y),
+                from_x_y(-1.0, 0.0)
+            );
+            assert_eq!(
+                from_x_y(MAX.sqrt(), 0.0).normalize_or($vec::Y),
+                from_x_y(1.0, 0.0)
+            );
+
+            // We expect `normalize_or` to return the fallback value when inputs are very small:
+            assert_eq!(from_x_y(0.0, 0.0).normalize_or($vec::Y), $vec::Y);
+            assert_eq!(from_x_y(MIN_POSITIVE, 0.0).normalize_or($vec::Y), $vec::Y);
+
+            // We expect `normalize` to return zero when inputs are non-finite:
+            assert_eq!(from_x_y(INFINITY, 0.0).normalize_or($vec::Y), $vec::Y);
+            assert_eq!(from_x_y(NAN, 0.0).normalize_or($vec::Y), $vec::Y);
+
+            // We expect `normalize` to return zero when inputs are very large:
+            assert_eq!(from_x_y(MAX, 0.0).normalize_or($vec::Y), $vec::Y);
+            assert_eq!(from_x_y(MAX, MAX).normalize_or($vec::Y), $vec::Y);
+        });
+
         glam_test!(test_normalize_or_zero, {
             assert_eq!(
                 from_x_y(-42.0, 0.0).normalize_or_zero(),
@@ -185,7 +208,7 @@ macro_rules! vec3_float_test_vectors {
             $vec3::new(0.2, 0.3, 0.4),
             $vec3::new(4.0, -5.0, 6.0),
             $vec3::new(-2.0, 0.5, -1.0),
-            // Pathalogical cases from <https://graphics.pixar.com/library/OrthonormalB/paper.pdf>:
+            // Pathological cases from <https://graphics.pixar.com/library/OrthonormalB/paper.pdf>:
             $vec3::new(0.00038527316, 0.00038460016, -0.99999988079),
             $vec3::new(-0.00019813581, -0.00008946839, -0.99999988079),
         ]
@@ -212,7 +235,7 @@ macro_rules! vec2_float_test_vectors {
             $vec2::new(0.2, 0.3),
             $vec2::new(4.0, -5.0),
             $vec2::new(-2.0, 0.5),
-            // Pathalogical cases from <https://graphics.pixar.com/library/OrthonormalB/paper.pdf>:
+            // Pathological cases from <https://graphics.pixar.com/library/OrthonormalB/paper.pdf>:
             $vec2::new(0.00038527316, 0.00038460016),
             $vec2::new(-0.00019813581, -0.00008946839),
         ]

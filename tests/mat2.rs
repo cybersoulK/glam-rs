@@ -161,6 +161,8 @@ macro_rules! impl_mat2_tests {
             let m0_neg = $mat2::from_cols_array_2d(&[[-1.0, -2.0], [-3.0, -4.0]]);
             assert_eq!(m0x2, m0 * 2.0);
             assert_eq!(m0x2, 2.0 * m0);
+            assert_eq!(m0, m0x2 / 2.0);
+            assert_eq!(m0, 2.0 / m0x2);
             assert_eq!(m0x2, m0 + m0);
             assert_eq!($mat2::ZERO, m0 - m0);
             assert_eq!(m0_neg, -m0);
@@ -170,6 +172,10 @@ macro_rules! impl_mat2_tests {
             let mut m1 = m0;
             m1 *= 2.0;
             assert_eq!(m0x2, m1);
+
+            let mut m1 = m0x2;
+            m1 /= 2.0;
+            assert_eq!(m0, m1);
 
             let mut m1 = m0;
             m1 += m0;
@@ -187,6 +193,7 @@ macro_rules! impl_mat2_tests {
         glam_test!(test_mat2_fmt, {
             let a = $mat2::from_cols_array_2d(&MATRIX);
             assert_eq!(format!("{}", a), "[[1, 2], [3, 4]]");
+            assert_eq!(format!("{:.2}", a), "[[1.00, 2.00], [3.00, 4.00]]");
         });
 
         glam_test!(test_mat2_to_from_slice, {

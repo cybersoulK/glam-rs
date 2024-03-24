@@ -1,6 +1,6 @@
 // Generated from vec.rs.tera template. Edit the template, not the generated file.
 
-use crate::{f64::math, BVec3, DVec2, DVec4, IVec3, UVec3, Vec3};
+use crate::{f64::math, BVec3, BVec3A, DVec2, DVec4, IVec3, UVec3, Vec3};
 
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
@@ -165,6 +165,30 @@ impl DVec3 {
         self.xy()
     }
 
+    /// Creates a 3D vector from `self` with the given value of `x`.
+    #[inline]
+    #[must_use]
+    pub fn with_x(mut self, x: f64) -> Self {
+        self.x = x;
+        self
+    }
+
+    /// Creates a 3D vector from `self` with the given value of `y`.
+    #[inline]
+    #[must_use]
+    pub fn with_y(mut self, y: f64) -> Self {
+        self.y = y;
+        self
+    }
+
+    /// Creates a 3D vector from `self` with the given value of `z`.
+    #[inline]
+    #[must_use]
+    pub fn with_z(mut self, z: f64) -> Self {
+        self.z = z;
+        self
+    }
+
     /// Computes the dot product of `self` and `rhs`.
     #[inline]
     #[must_use]
@@ -246,6 +270,24 @@ impl DVec3 {
     #[must_use]
     pub fn max_element(self) -> f64 {
         self.x.max(self.y.max(self.z))
+    }
+
+    /// Returns the sum of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x + self.y + ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_sum(self) -> f64 {
+        self.x + self.y + self.z
+    }
+
+    /// Returns the product of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x * self.y * ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_product(self) -> f64 {
+        self.x * self.y * self.z
     }
 
     /// Returns a vector mask containing the result of a `==` comparison for each element of
@@ -487,6 +529,24 @@ impl DVec3 {
         }
     }
 
+    /// Returns `self` normalized to length 1.0 if possible, else returns a
+    /// fallback value.
+    ///
+    /// In particular, if the input is zero (or very close to zero), or non-finite,
+    /// the result of this operation will be the fallback value.
+    ///
+    /// See also [`Self::try_normalize()`].
+    #[inline]
+    #[must_use]
+    pub fn normalize_or(self, fallback: Self) -> Self {
+        let rcp = self.length_recip();
+        if rcp.is_finite() && rcp > 0.0 {
+            self * rcp
+        } else {
+            fallback
+        }
+    }
+
     /// Returns `self` normalized to length 1.0 if possible, else returns zero.
     ///
     /// In particular, if the input is zero (or very close to zero), or non-finite,
@@ -496,22 +556,16 @@ impl DVec3 {
     #[inline]
     #[must_use]
     pub fn normalize_or_zero(self) -> Self {
-        let rcp = self.length_recip();
-        if rcp.is_finite() && rcp > 0.0 {
-            self * rcp
-        } else {
-            Self::ZERO
-        }
+        self.normalize_or(Self::ZERO)
     }
 
     /// Returns whether `self` is length `1.0` or not.
     ///
-    /// Uses a precision threshold of `1e-4`.
+    /// Uses a precision threshold of approximately `1e-4`.
     #[inline]
     #[must_use]
     pub fn is_normalized(self) -> bool {
-        // TODO: do something with epsilon
-        math::abs(self.length_squared() - 1.0) <= 1e-4
+        math::abs(self.length_squared() - 1.0) <= 2e-4
     }
 
     /// Returns the vector projection of `self` onto `rhs`.
@@ -623,13 +677,27 @@ impl DVec3 {
         }
     }
 
-    /// Returns a vector containing the fractional part of the vector, e.g. `self -
-    /// self.floor()`.
+    /// Returns a vector containing the fractional part of the vector as `self - self.trunc()`.
+    ///
+    /// Note that this differs from the GLSL implementation of `fract` which returns
+    /// `self - self.floor()`.
     ///
     /// Note that this is fast but not precise for large numbers.
     #[inline]
     #[must_use]
     pub fn fract(self) -> Self {
+        self - self.trunc()
+    }
+
+    /// Returns a vector containing the fractional part of the vector as `self - self.floor()`.
+    ///
+    /// Note that this differs from the Rust implementation of `fract` which returns
+    /// `self - self.trunc()`.
+    ///
+    /// Note that this is fast but not precise for large numbers.
+    #[inline]
+    #[must_use]
+    pub fn fract_gl(self) -> Self {
         self - self.floor()
     }
 
@@ -673,6 +741,21 @@ impl DVec3 {
     #[must_use]
     pub fn lerp(self, rhs: Self, s: f64) -> Self {
         self + ((rhs - self) * s)
+    }
+
+    /// Moves towards `rhs` based on the value `d`.
+    ///
+    /// When `d` is `0.0`, the result will be equal to `self`. When `d` is equal to
+    /// `self.distance(rhs)`, the result will be equal to `rhs`. Will not go past `rhs`.
+    #[inline]
+    #[must_use]
+    pub fn move_towards(&self, rhs: Self, d: f64) -> Self {
+        let a = rhs - *self;
+        let len = a.length();
+        if len <= d || len <= 1e-4 {
+            return rhs;
+        }
+        *self + a / len * d
     }
 
     /// Calculates the midpoint between `self` and `rhs`.
@@ -1257,7 +1340,11 @@ impl IndexMut<usize> for DVec3 {
 #[cfg(not(target_arch = "spirv"))]
 impl fmt::Display for DVec3 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}, {}, {}]", self.x, self.y, self.z)
+        if let Some(p) = f.precision() {
+            write!(f, "[{:.*}, {:.*}, {:.*}]", p, self.x, p, self.y, p, self.z)
+        } else {
+            write!(f, "[{}, {}, {}]", self.x, self.y, self.z)
+        }
     }
 }
 
@@ -1325,5 +1412,24 @@ impl From<UVec3> for DVec3 {
     #[inline]
     fn from(v: UVec3) -> Self {
         Self::new(f64::from(v.x), f64::from(v.y), f64::from(v.z))
+    }
+}
+
+impl From<BVec3> for DVec3 {
+    #[inline]
+    fn from(v: BVec3) -> Self {
+        Self::new(f64::from(v.x), f64::from(v.y), f64::from(v.z))
+    }
+}
+
+impl From<BVec3A> for DVec3 {
+    #[inline]
+    fn from(v: BVec3A) -> Self {
+        let bool_array: [bool; 3] = v.into();
+        Self::new(
+            f64::from(bool_array[0]),
+            f64::from(bool_array[1]),
+            f64::from(bool_array[2]),
+        )
     }
 }

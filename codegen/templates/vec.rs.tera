@@ -98,6 +98,10 @@
     {% set from_types = ["U16Vec" ~ dim, "UVec" ~ dim] %}
     {% set try_from_types = ["I16Vec" ~ dim, "IVec" ~ dim, "I64Vec" ~ dim] %}
 {% endif %}
+{% set bvec_from_type = "BVec" ~ dim %}
+{% if dim > 2 %}
+    {% set bveca_from_type = "BVec" ~ dim ~ "A" %}
+{% endif %}
 
 {% if dim == 2 %}
     {% if scalar_t == "i16" or scalar_t == "u16" %}
@@ -128,15 +132,23 @@
     {% set zero = "0" %}
 {% endif %}
 
-{% if mask_t == "BVec4A" and scalar_t == "f32"  and is_scalar %}
-    #[cfg(feature = "scalar-math")]
-    use crate::BVec4 as BVec4A;
+{% if bveca_from_type and bveca_from_type == "BVec4A" and is_scalar %}
+    {% if scalar_t == "f32" %}
+        #[cfg(feature = "scalar-math")]
+        use crate::BVec4 as BVec4A;
+    {% endif %}
     #[cfg(not(feature = "scalar-math"))]
     use crate::BVec4A;
     use crate::{
+        {% if bveca_from_type and bveca_from_type != mask_t %}
+            {{ mask_t }},
+        {% endif %}
 {% else %}
     use crate::{
         {{ mask_t }},
+        {% if bveca_from_type and bveca_from_type != mask_t %}
+            {{ bveca_from_type }},
+        {% endif %}
 {% endif %}
     {% if self_t != vec2_t %}
         {{ vec2_t }},
@@ -169,6 +181,9 @@
         {% for ty in try_from_types %}
             {{ ty }},
         {% endfor %}
+    {% endif %}
+    {% if bvec_from_type != mask_t %}
+        {{ bvec_from_type }},
     {% endif %}
 };
 
@@ -517,6 +532,17 @@ impl {{ self_t }} {
     }
 {% endif %}
 
+
+{% for c in components %}
+    /// Creates a {{ dim }}D vector from `self` with the given value of `{{ c }}`.
+    #[inline]
+    #[must_use]
+    pub fn with_{{ c }}(mut self, {{ c }}: {{ scalar_t }}) -> Self {
+        self.{{ c }} = {{ c }};
+        self
+    }
+{% endfor %}
+
     /// Computes the dot product of `self` and `rhs`.
     #[inline]
     #[must_use]
@@ -750,6 +776,100 @@ impl {{ self_t }} {
                 v[0]
             {% elif dim == 4 %}
                 self.0.reduce_max()
+            {% endif %}
+        {% endif %}
+    }
+
+    /// Returns the sum of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x + self.y + ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_sum(self) -> {{ scalar_t }} {
+        {% if is_scalar %}
+            {% for c in components %}
+                self.{{ c }} {% if not loop.last %} + {% endif %}
+            {%- endfor %}
+        {% elif is_sse2 %}
+            {% if dim == 3 %}
+                unsafe {
+                    let v = self.0;
+                    let v = _mm_add_ps(v, _mm_shuffle_ps(v, Self::ZERO.0, 0b00_11_00_01));
+                    let v = _mm_add_ps(v, _mm_shuffle_ps(v, v, 0b00_00_00_10));
+                    _mm_cvtss_f32(v)
+                }
+            {% elif dim == 4 %}
+                unsafe {
+                    let v = self.0;
+                    let v = _mm_add_ps(v, _mm_shuffle_ps(v, v, 0b00_11_00_01));
+                    let v = _mm_add_ps(v, _mm_shuffle_ps(v, v, 0b00_00_00_10));
+                    _mm_cvtss_f32(v)
+                }
+            {% endif %}
+        {% elif is_wasm32 %}
+            {% if dim == 3 %}
+                let v = self.0;
+                let v = f32x4_add(v, i32x4_shuffle::<1, 0, 4, 0>(v, Self::ZERO.0));
+                let v = f32x4_add(v, i32x4_shuffle::<2, 0, 0, 0>(v, v));
+                f32x4_extract_lane::<0>(v)
+            {% elif dim == 4 %}
+                let v = self.0;
+                let v = f32x4_add(v, i32x4_shuffle::<1, 0, 3, 0>(v, v));
+                let v = f32x4_add(v, i32x4_shuffle::<2, 0, 0, 0>(v, v));
+                f32x4_extract_lane::<0>(v)
+            {% endif %}
+        {% elif is_coresimd %}
+            {% if dim == 3 %}
+                simd_swizzle!(self.0, Self::ZERO.0, [0, 1, 2, 4]).reduce_sum()
+            {% elif dim == 4 %}
+                self.0.reduce_sum()
+            {% endif %}
+        {% endif %}
+    }
+
+    /// Returns the product of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x * self.y * ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_product(self) -> {{ scalar_t }} {
+        {% if is_scalar %}
+            {% for c in components %}
+                self.{{ c }} {% if not loop.last %} * {% endif %}
+            {%- endfor %}
+        {% elif is_sse2 %}
+            {% if dim == 3 %}
+                unsafe {
+                    let v = self.0;
+                    let v = _mm_mul_ps(v, _mm_shuffle_ps(v, Self::ONE.0, 0b00_11_00_01));
+                    let v = _mm_mul_ps(v, _mm_shuffle_ps(v, v, 0b00_00_00_10));
+                    _mm_cvtss_f32(v)
+                }
+            {% elif dim == 4 %}
+                unsafe {
+                    let v = self.0;
+                    let v = _mm_mul_ps(v, _mm_shuffle_ps(v, v, 0b00_11_00_01));
+                    let v = _mm_mul_ps(v, _mm_shuffle_ps(v, v, 0b00_00_00_10));
+                    _mm_cvtss_f32(v)
+                }
+            {% endif %}
+        {% elif is_wasm32 %}
+            {% if dim == 3 %}
+                let v = self.0;
+                let v = f32x4_mul(v, i32x4_shuffle::<1, 0, 4, 0>(v, Self::ONE.0));
+                let v = f32x4_mul(v, i32x4_shuffle::<2, 0, 0, 0>(v, v));
+                f32x4_extract_lane::<0>(v)
+            {% elif dim == 4 %}
+                let v = self.0;
+                let v = f32x4_mul(v, i32x4_shuffle::<1, 0, 3, 0>(v, v));
+                let v = f32x4_mul(v, i32x4_shuffle::<2, 0, 0, 0>(v, v));
+                f32x4_extract_lane::<0>(v)
+            {% endif %}
+        {% elif is_coresimd %}
+            {% if dim == 3 %}
+                simd_swizzle!(self.0, Self::ONE.0, [0, 1, 2, 4]).reduce_product()
+            {% elif dim == 4 %}
+                self.0.reduce_product()
             {% endif %}
         {% endif %}
     }
@@ -1256,6 +1376,24 @@ impl {{ self_t }} {
         }
     }
 
+    /// Returns `self` normalized to length 1.0 if possible, else returns a
+    /// fallback value.
+    ///
+    /// In particular, if the input is zero (or very close to zero), or non-finite,
+    /// the result of this operation will be the fallback value.
+    ///
+    /// See also [`Self::try_normalize()`].
+    #[inline]
+    #[must_use]
+    pub fn normalize_or(self, fallback: Self) -> Self {
+        let rcp = self.length_recip();
+        if rcp.is_finite() && rcp > 0.0 {
+            self * rcp
+        } else {
+            fallback
+        }
+    }
+
     /// Returns `self` normalized to length 1.0 if possible, else returns zero.
     ///
     /// In particular, if the input is zero (or very close to zero), or non-finite,
@@ -1265,22 +1403,16 @@ impl {{ self_t }} {
     #[inline]
     #[must_use]
     pub fn normalize_or_zero(self) -> Self {
-        let rcp = self.length_recip();
-        if rcp.is_finite() && rcp > 0.0 {
-            self * rcp
-        } else {
-            Self::ZERO
-        }
+        self.normalize_or(Self::ZERO)
     }
 
     /// Returns whether `self` is length `1.0` or not.
     ///
-    /// Uses a precision threshold of `1e-4`.
+    /// Uses a precision threshold of approximately `1e-4`.
     #[inline]
     #[must_use]
     pub fn is_normalized(self) -> bool {
-        // TODO: do something with epsilon
-        math::abs(self.length_squared() - 1.0) <= 1e-4
+        math::abs(self.length_squared() - 1.0) <= 2e-4
     }
 
     /// Returns the vector projection of `self` onto `rhs`.
@@ -1424,13 +1556,27 @@ impl {{ self_t }} {
         {% endif %}
     }
 
-    /// Returns a vector containing the fractional part of the vector, e.g. `self -
-    /// self.floor()`.
+    /// Returns a vector containing the fractional part of the vector as `self - self.trunc()`.
+    ///
+    /// Note that this differs from the GLSL implementation of `fract` which returns
+    /// `self - self.floor()`.
     ///
     /// Note that this is fast but not precise for large numbers.
     #[inline]
     #[must_use]
     pub fn fract(self) -> Self {
+        self - self.trunc()
+    }
+
+    /// Returns a vector containing the fractional part of the vector as `self - self.floor()`.
+    ///
+    /// Note that this differs from the Rust implementation of `fract` which returns
+    /// `self - self.trunc()`.
+    ///
+    /// Note that this is fast but not precise for large numbers.
+    #[inline]
+    #[must_use]
+    pub fn fract_gl(self) -> Self {
         self - self.floor()
     }
 
@@ -1486,6 +1632,21 @@ impl {{ self_t }} {
     #[must_use]
     pub fn lerp(self, rhs: Self, s: {{ scalar_t }}) -> Self {
         self + ((rhs - self) * s)
+    }
+
+    /// Moves towards `rhs` based on the value `d`.
+    ///
+    /// When `d` is `0.0`, the result will be equal to `self`. When `d` is equal to 
+    /// `self.distance(rhs)`, the result will be equal to `rhs`. Will not go past `rhs`.
+    #[inline]
+    #[must_use]
+    pub fn move_towards(&self, rhs: Self, d: {{ scalar_t }}) -> Self {
+        let a = rhs - *self;
+        let len = a.length();
+        if len <= d || len <= 1e-4 {
+            return rhs;
+        }
+        *self + a / len * d 
     }
 
     /// Calculates the midpoint between `self` and `rhs`. 
@@ -2837,12 +2998,26 @@ impl IndexMut<usize> for {{ self_t }} {
 #[cfg(not(target_arch = "spirv"))]
 impl fmt::Display for {{ self_t }} {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        {% if dim == 2 %}
-            write!(f, "[{}, {}]", self.x, self.y)
-        {% elif dim == 3 %}
-            write!(f, "[{}, {}, {}]", self.x, self.y, self.z)
-        {% elif dim == 4 %}
-            write!(f, "[{}, {}, {}, {}]", self.x, self.y, self.z, self.w)
+        {% if is_float %}
+        if let Some(p) = f.precision() {
+            {% if dim == 2 %}
+                write!(f, "[{:.*}, {:.*}]", p, self.x, p, self.y)
+            {% elif dim == 3 %}
+                write!(f, "[{:.*}, {:.*}, {:.*}]", p, self.x, p, self.y, p, self.z)
+            {% elif dim == 4 %}
+                write!(f, "[{:.*}, {:.*}, {:.*}, {:.*}]", p, self.x, p, self.y, p, self.z, p, self.w)
+            {% endif %}
+        } else {
+        {% endif %}
+            {% if dim == 2 %}
+                write!(f, "[{}, {}]", self.x, self.y)
+            {% elif dim == 3 %}
+                write!(f, "[{}, {}, {}]", self.x, self.y, self.z)
+            {% elif dim == 4 %}
+                write!(f, "[{}, {}, {}, {}]", self.x, self.y, self.z, self.w)
+            {% endif %}
+        {% if is_float %}
+        }
         {% endif %}
     }
 }
@@ -3118,4 +3293,32 @@ impl DerefMut for {{ self_t }} {
         }
     }
     {% endfor %}
+{% endif %}
+
+impl From<{{ bvec_from_type }}> for {{ self_t }} {
+    #[inline]
+    fn from(v: {{ bvec_from_type }}) -> Self {
+        Self::new(
+            {% for c in components %}
+                {{ scalar_t }}::from(v.{{ c }}),
+            {% endfor %}
+        )
+    }
+}
+
+{% if bveca_from_type %}
+    {% if bveca_from_type == "BVec4A" %}
+    #[cfg(not(feature = "scalar-math"))]
+    {% endif %}
+    impl From<{{ bveca_from_type }}> for {{ self_t }} {
+        #[inline]
+        fn from(v: {{ bveca_from_type }}) -> Self {
+            let bool_array: [bool; {{ dim }}] = v.into();
+            Self::new(
+                {% for c in components %}
+                    {{ scalar_t }}::from(bool_array[{{ loop.index0 }}]),
+                {% endfor %}
+            )
+        }
+    }
 {% endif %}

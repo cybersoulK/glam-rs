@@ -5,6 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog], and this project adheres to
 [Semantic Versioning].
 
+## [0.27.0] - 2024-03-23
+
+### Breaking changes
+
+* Changed implementation of vector `fract` method to match the Rust
+  implementation instead of the GLSL implementation, that is `self -
+  self.trunc()` instead of `self - self.floor()`.
+
+### Added
+
+* Added vector `fract_gl` which uses the GLSL specification of fract,
+ `self - self.floor()`.
+
+## [0.26.0] - 2024-03-18
+
+### Breaking changes
+
+* Minimum Supported Rust Version bumped to 1.68.2 for
+ `impl From<bool> for {f32,f64}` support.
+
+### Fixed
+
+* Respect precision format specifier in Display implementations. Previously it
+  was ignored.
+
+* Corrected precision documentation for vector `is_normalized` methods and
+  changed the internal check to use `2e-4` to better match the documented
+  precision value of `1e-4`.
+
+### Added
+
+ * Added `with_x`, `with_y`, etc. to vector types which returns a copy of
+   the vector with the new component value.
+
+ * Added `midpoint` method to vector types that returns the point between two
+   points.
+
+ * Added `move_towards` for float vector types.
+
+ * Added saturating add and sub methods for signed and unsigned integer vector
+   types.
+
+ * Added element wise sum and product methods for vector types.
+
+ * Added element wise absolute values method for matrix types.
+
+ * Added `from_array` method for boolean vector types.
+
+ * Added `normalize_or` method to vector types that returns the specified value
+   if normalization failed.
+
+ * Added `From<BVecN>` support for all vector types.
+
+ * Added `Div` and `DivAssign` by scalar implementations to matrix types.
+
 ## [0.25.0] - 2023-12-19
 
 ### Breaking changes
@@ -1001,7 +1056,9 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 [Keep a Changelog]: https://keepachangelog.com/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
-[Unreleased]: https://github.com/bitshifter/glam-rs/compare/0.25.0...HEAD
+[Unreleased]: https://github.com/bitshifter/glam-rs/compare/0.27.0...HEAD
+[0.27.0]: https://github.com/bitshifter/glam-rs/compare/0.26.0...0.27.0
+[0.26.0]: https://github.com/bitshifter/glam-rs/compare/0.25.0...0.26.0
 [0.25.0]: https://github.com/bitshifter/glam-rs/compare/0.24.2...0.25.0
 [0.24.2]: https://github.com/bitshifter/glam-rs/compare/0.24.1...0.24.2
 [0.24.1]: https://github.com/bitshifter/glam-rs/compare/0.24.0...0.24.1

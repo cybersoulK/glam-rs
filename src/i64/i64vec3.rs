@@ -1,6 +1,6 @@
 // Generated from vec.rs.tera template. Edit the template, not the generated file.
 
-use crate::{BVec3, I16Vec3, I64Vec2, I64Vec4, IVec3, U16Vec3, U64Vec3, UVec3};
+use crate::{BVec3, BVec3A, I16Vec3, I64Vec2, I64Vec4, IVec3, U16Vec3, U64Vec3, UVec3};
 
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
@@ -157,6 +157,30 @@ impl I64Vec3 {
         self.xy()
     }
 
+    /// Creates a 3D vector from `self` with the given value of `x`.
+    #[inline]
+    #[must_use]
+    pub fn with_x(mut self, x: i64) -> Self {
+        self.x = x;
+        self
+    }
+
+    /// Creates a 3D vector from `self` with the given value of `y`.
+    #[inline]
+    #[must_use]
+    pub fn with_y(mut self, y: i64) -> Self {
+        self.y = y;
+        self
+    }
+
+    /// Creates a 3D vector from `self` with the given value of `z`.
+    #[inline]
+    #[must_use]
+    pub fn with_z(mut self, z: i64) -> Self {
+        self.z = z;
+        self
+    }
+
     /// Computes the dot product of `self` and `rhs`.
     #[inline]
     #[must_use]
@@ -238,6 +262,24 @@ impl I64Vec3 {
     #[must_use]
     pub fn max_element(self) -> i64 {
         self.x.max(self.y.max(self.z))
+    }
+
+    /// Returns the sum of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x + self.y + ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_sum(self) -> i64 {
+        self.x + self.y + self.z
+    }
+
+    /// Returns the product of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x * self.y * ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_product(self) -> i64 {
+        self.x * self.y * self.z
     }
 
     /// Returns a vector mask containing the result of a `==` comparison for each element of
@@ -1387,5 +1429,24 @@ impl TryFrom<U64Vec3> for I64Vec3 {
             i64::try_from(v.y)?,
             i64::try_from(v.z)?,
         ))
+    }
+}
+
+impl From<BVec3> for I64Vec3 {
+    #[inline]
+    fn from(v: BVec3) -> Self {
+        Self::new(i64::from(v.x), i64::from(v.y), i64::from(v.z))
+    }
+}
+
+impl From<BVec3A> for I64Vec3 {
+    #[inline]
+    fn from(v: BVec3A) -> Self {
+        let bool_array: [bool; 3] = v.into();
+        Self::new(
+            i64::from(bool_array[0]),
+            i64::from(bool_array[1]),
+            i64::from(bool_array[2]),
+        )
     }
 }

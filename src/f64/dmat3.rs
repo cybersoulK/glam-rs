@@ -4,7 +4,7 @@ use crate::{f64::math, swizzles::*, DMat2, DMat4, DQuat, DVec2, DVec3, EulerRot,
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
-use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 /// Creates a 3x3 matrix from three column vectors.
 #[inline(always)]
@@ -550,6 +550,18 @@ impl DMat3 {
         )
     }
 
+    /// Divides a 3x3 matrix by a scalar.
+    #[inline]
+    #[must_use]
+    pub fn div_scalar(&self, rhs: f64) -> Self {
+        let rhs = DVec3::splat(rhs);
+        Self::from_cols(
+            self.x_axis.div(rhs),
+            self.y_axis.div(rhs),
+            self.z_axis.div(rhs),
+        )
+    }
+
     /// Returns true if the absolute difference of all elements between `self` and `rhs`
     /// is less than or equal to `max_abs_diff`.
     ///
@@ -565,6 +577,13 @@ impl DMat3 {
         self.x_axis.abs_diff_eq(rhs.x_axis, max_abs_diff)
             && self.y_axis.abs_diff_eq(rhs.y_axis, max_abs_diff)
             && self.z_axis.abs_diff_eq(rhs.z_axis, max_abs_diff)
+    }
+
+    /// Takes the absolute value of each element in `self`
+    #[inline]
+    #[must_use]
+    pub fn abs(&self) -> Self {
+        Self::from_cols(self.x_axis.abs(), self.y_axis.abs(), self.z_axis.abs())
     }
 
     #[inline]
@@ -668,6 +687,29 @@ impl MulAssign<f64> for DMat3 {
     }
 }
 
+impl Div<DMat3> for f64 {
+    type Output = DMat3;
+    #[inline]
+    fn div(self, rhs: DMat3) -> Self::Output {
+        rhs.div_scalar(self)
+    }
+}
+
+impl Div<f64> for DMat3 {
+    type Output = Self;
+    #[inline]
+    fn div(self, rhs: f64) -> Self::Output {
+        self.div_scalar(rhs)
+    }
+}
+
+impl DivAssign<f64> for DMat3 {
+    #[inline]
+    fn div_assign(&mut self, rhs: f64) {
+        *self = self.div_scalar(rhs);
+    }
+}
+
 impl Sum<Self> for DMat3 {
     fn sum<I>(iter: I) -> Self
     where
@@ -741,6 +783,14 @@ impl fmt::Debug for DMat3 {
 #[cfg(not(target_arch = "spirv"))]
 impl fmt::Display for DMat3 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}, {}, {}]", self.x_axis, self.y_axis, self.z_axis)
+        if let Some(p) = f.precision() {
+            write!(
+                f,
+                "[{:.*}, {:.*}, {:.*}]",
+                p, self.x_axis, p, self.y_axis, p, self.z_axis
+            )
+        } else {
+            write!(f, "[{}, {}, {}]", self.x_axis, self.y_axis, self.z_axis)
+        }
     }
 }

@@ -1,6 +1,6 @@
 // Generated from vec.rs.tera template. Edit the template, not the generated file.
 
-use crate::{f32::math, wasm32::*, BVec3A, Vec2, Vec3, Vec4};
+use crate::{f32::math, wasm32::*, BVec3, BVec3A, Vec2, Vec3, Vec4};
 
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
@@ -168,6 +168,30 @@ impl Vec3A {
         self.xy()
     }
 
+    /// Creates a 3D vector from `self` with the given value of `x`.
+    #[inline]
+    #[must_use]
+    pub fn with_x(mut self, x: f32) -> Self {
+        self.x = x;
+        self
+    }
+
+    /// Creates a 3D vector from `self` with the given value of `y`.
+    #[inline]
+    #[must_use]
+    pub fn with_y(mut self, y: f32) -> Self {
+        self.y = y;
+        self
+    }
+
+    /// Creates a 3D vector from `self` with the given value of `z`.
+    #[inline]
+    #[must_use]
+    pub fn with_z(mut self, z: f32) -> Self {
+        self.z = z;
+        self
+    }
+
     /// Computes the dot product of `self` and `rhs`.
     #[inline]
     #[must_use]
@@ -247,6 +271,30 @@ impl Vec3A {
         let v = self.0;
         let v = f32x4_pmax(v, i32x4_shuffle::<2, 2, 0, 0>(v, v));
         let v = f32x4_pmax(v, i32x4_shuffle::<1, 0, 0, 0>(v, v));
+        f32x4_extract_lane::<0>(v)
+    }
+
+    /// Returns the sum of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x + self.y + ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_sum(self) -> f32 {
+        let v = self.0;
+        let v = f32x4_add(v, i32x4_shuffle::<1, 0, 4, 0>(v, Self::ZERO.0));
+        let v = f32x4_add(v, i32x4_shuffle::<2, 0, 0, 0>(v, v));
+        f32x4_extract_lane::<0>(v)
+    }
+
+    /// Returns the product of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x * self.y * ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_product(self) -> f32 {
+        let v = self.0;
+        let v = f32x4_mul(v, i32x4_shuffle::<1, 0, 4, 0>(v, Self::ONE.0));
+        let v = f32x4_mul(v, i32x4_shuffle::<2, 0, 0, 0>(v, v));
         f32x4_extract_lane::<0>(v)
     }
 
@@ -488,6 +536,24 @@ impl Vec3A {
         }
     }
 
+    /// Returns `self` normalized to length 1.0 if possible, else returns a
+    /// fallback value.
+    ///
+    /// In particular, if the input is zero (or very close to zero), or non-finite,
+    /// the result of this operation will be the fallback value.
+    ///
+    /// See also [`Self::try_normalize()`].
+    #[inline]
+    #[must_use]
+    pub fn normalize_or(self, fallback: Self) -> Self {
+        let rcp = self.length_recip();
+        if rcp.is_finite() && rcp > 0.0 {
+            self * rcp
+        } else {
+            fallback
+        }
+    }
+
     /// Returns `self` normalized to length 1.0 if possible, else returns zero.
     ///
     /// In particular, if the input is zero (or very close to zero), or non-finite,
@@ -497,22 +563,16 @@ impl Vec3A {
     #[inline]
     #[must_use]
     pub fn normalize_or_zero(self) -> Self {
-        let rcp = self.length_recip();
-        if rcp.is_finite() && rcp > 0.0 {
-            self * rcp
-        } else {
-            Self::ZERO
-        }
+        self.normalize_or(Self::ZERO)
     }
 
     /// Returns whether `self` is length `1.0` or not.
     ///
-    /// Uses a precision threshold of `1e-4`.
+    /// Uses a precision threshold of approximately `1e-4`.
     #[inline]
     #[must_use]
     pub fn is_normalized(self) -> bool {
-        // TODO: do something with epsilon
-        math::abs(self.length_squared() - 1.0) <= 1e-4
+        math::abs(self.length_squared() - 1.0) <= 2e-4
     }
 
     /// Returns the vector projection of `self` onto `rhs`.
@@ -608,13 +668,27 @@ impl Vec3A {
         Self(f32x4_trunc(self.0))
     }
 
-    /// Returns a vector containing the fractional part of the vector, e.g. `self -
-    /// self.floor()`.
+    /// Returns a vector containing the fractional part of the vector as `self - self.trunc()`.
+    ///
+    /// Note that this differs from the GLSL implementation of `fract` which returns
+    /// `self - self.floor()`.
     ///
     /// Note that this is fast but not precise for large numbers.
     #[inline]
     #[must_use]
     pub fn fract(self) -> Self {
+        self - self.trunc()
+    }
+
+    /// Returns a vector containing the fractional part of the vector as `self - self.floor()`.
+    ///
+    /// Note that this differs from the Rust implementation of `fract` which returns
+    /// `self - self.trunc()`.
+    ///
+    /// Note that this is fast but not precise for large numbers.
+    #[inline]
+    #[must_use]
+    pub fn fract_gl(self) -> Self {
         self - self.floor()
     }
 
@@ -654,6 +728,21 @@ impl Vec3A {
     #[must_use]
     pub fn lerp(self, rhs: Self, s: f32) -> Self {
         self + ((rhs - self) * s)
+    }
+
+    /// Moves towards `rhs` based on the value `d`.
+    ///
+    /// When `d` is `0.0`, the result will be equal to `self`. When `d` is equal to
+    /// `self.distance(rhs)`, the result will be equal to `rhs`. Will not go past `rhs`.
+    #[inline]
+    #[must_use]
+    pub fn move_towards(&self, rhs: Self, d: f32) -> Self {
+        let a = rhs - *self;
+        let len = a.length();
+        if len <= d || len <= 1e-4 {
+            return rhs;
+        }
+        *self + a / len * d
     }
 
     /// Calculates the midpoint between `self` and `rhs`.
@@ -1155,7 +1244,11 @@ impl IndexMut<usize> for Vec3A {
 #[cfg(not(target_arch = "spirv"))]
 impl fmt::Display for Vec3A {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}, {}, {}]", self.x, self.y, self.z)
+        if let Some(p) = f.precision() {
+            write!(f, "[{:.*}, {:.*}, {:.*}]", p, self.x, p, self.y, p, self.z)
+        } else {
+            write!(f, "[{}, {}, {}]", self.x, self.y, self.z)
+        }
     }
 }
 
@@ -1255,5 +1348,24 @@ impl DerefMut for Vec3A {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { &mut *(self as *mut Self).cast() }
+    }
+}
+
+impl From<BVec3> for Vec3A {
+    #[inline]
+    fn from(v: BVec3) -> Self {
+        Self::new(f32::from(v.x), f32::from(v.y), f32::from(v.z))
+    }
+}
+
+impl From<BVec3A> for Vec3A {
+    #[inline]
+    fn from(v: BVec3A) -> Self {
+        let bool_array: [bool; 3] = v.into();
+        Self::new(
+            f32::from(bool_array[0]),
+            f32::from(bool_array[1]),
+            f32::from(bool_array[2]),
+        )
     }
 }

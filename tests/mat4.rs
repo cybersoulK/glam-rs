@@ -603,6 +603,8 @@ macro_rules! impl_mat4_tests {
             ]);
             assert_eq!(m0x2, m0 * 2.0);
             assert_eq!(m0x2, 2.0 * m0);
+            assert_eq!(m0, m0x2 / 2.0);
+            assert_eq!(m0, 2.0 / m0x2);
             assert_eq!(m0x2, m0 + m0);
             assert_eq!($mat4::ZERO, m0 - m0);
             assert_eq!(m0_neg, -m0);
@@ -612,6 +614,10 @@ macro_rules! impl_mat4_tests {
             let mut m1 = m0;
             m1 *= 2.0;
             assert_eq!(m0x2, m1);
+
+            let mut m1 = m0x2;
+            m1 /= 2.0;
+            assert_eq!(m0, m1);
 
             let mut m1 = m0;
             m1 += m0;
@@ -631,6 +637,10 @@ macro_rules! impl_mat4_tests {
             assert_eq!(
                 format!("{}", a),
                 "[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]"
+            );
+            assert_eq!(
+                format!("{:.1}", a),
+                "[[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [9.0, 10.0, 11.0, 12.0], [13.0, 14.0, 15.0, 16.0]]"
             );
         });
 
@@ -662,6 +672,28 @@ macro_rules! impl_mat4_tests {
             assert!(!($mat4::IDENTITY * INFINITY).is_finite());
             assert!(!($mat4::IDENTITY * NEG_INFINITY).is_finite());
             assert!(!($mat4::IDENTITY * NAN).is_finite());
+        });
+
+        glam_test!(test_mat4_abs, {
+            let neg = $mat4::IDENTITY * -1.0;
+            assert_eq!(neg.abs(), $mat4::IDENTITY);
+
+            let partial_neg = $mat4::from_cols_array_2d(&[
+                [1.0, -2.0, 3.0, -4.0],
+                [-5.0, 6.0, -7.0, 8.0],
+                [-9.0, 10.0, 11.0, -12.0],
+                [13.0, -14.0, -15.0, 16.0],
+            ]);
+
+            assert_eq!(
+                partial_neg.abs(),
+                $mat4::from_cols_array_2d(&[
+                    [1.0, 2.0, 3.0, 4.0],
+                    [5.0, 6.0, 7.0, 8.0],
+                    [9.0, 10.0, 11.0, 12.0],
+                    [13.0, 14.0, 15.0, 16.0],
+                ])
+            );
         });
     };
 }

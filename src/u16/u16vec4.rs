@@ -1,5 +1,7 @@
 // Generated from vec.rs.tera template. Edit the template, not the generated file.
 
+#[cfg(not(feature = "scalar-math"))]
+use crate::BVec4A;
 use crate::{BVec4, I16Vec4, I64Vec4, IVec4, U16Vec2, U16Vec3, U64Vec4, UVec4};
 
 #[cfg(not(target_arch = "spirv"))]
@@ -141,6 +143,38 @@ impl U16Vec4 {
         self.xyz()
     }
 
+    /// Creates a 4D vector from `self` with the given value of `x`.
+    #[inline]
+    #[must_use]
+    pub fn with_x(mut self, x: u16) -> Self {
+        self.x = x;
+        self
+    }
+
+    /// Creates a 4D vector from `self` with the given value of `y`.
+    #[inline]
+    #[must_use]
+    pub fn with_y(mut self, y: u16) -> Self {
+        self.y = y;
+        self
+    }
+
+    /// Creates a 4D vector from `self` with the given value of `z`.
+    #[inline]
+    #[must_use]
+    pub fn with_z(mut self, z: u16) -> Self {
+        self.z = z;
+        self
+    }
+
+    /// Creates a 4D vector from `self` with the given value of `w`.
+    #[inline]
+    #[must_use]
+    pub fn with_w(mut self, w: u16) -> Self {
+        self.w = w;
+        self
+    }
+
     /// Computes the dot product of `self` and `rhs`.
     #[inline]
     #[must_use]
@@ -213,6 +247,24 @@ impl U16Vec4 {
     #[must_use]
     pub fn max_element(self) -> u16 {
         self.x.max(self.y.max(self.z.max(self.w)))
+    }
+
+    /// Returns the sum of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x + self.y + ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_sum(self) -> u16 {
+        self.x + self.y + self.z + self.w
+    }
+
+    /// Returns the product of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x * self.y * ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_product(self) -> u16 {
+        self.x * self.y * self.z * self.w
     }
 
     /// Returns a vector mask containing the result of a `==` comparison for each element of
@@ -1387,5 +1439,32 @@ impl TryFrom<U64Vec4> for U16Vec4 {
             u16::try_from(v.z)?,
             u16::try_from(v.w)?,
         ))
+    }
+}
+
+impl From<BVec4> for U16Vec4 {
+    #[inline]
+    fn from(v: BVec4) -> Self {
+        Self::new(
+            u16::from(v.x),
+            u16::from(v.y),
+            u16::from(v.z),
+            u16::from(v.w),
+        )
+    }
+}
+
+#[cfg(not(feature = "scalar-math"))]
+
+impl From<BVec4A> for U16Vec4 {
+    #[inline]
+    fn from(v: BVec4A) -> Self {
+        let bool_array: [bool; 4] = v.into();
+        Self::new(
+            u16::from(bool_array[0]),
+            u16::from(bool_array[1]),
+            u16::from(bool_array[2]),
+            u16::from(bool_array[3]),
+        )
     }
 }

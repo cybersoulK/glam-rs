@@ -1,6 +1,6 @@
 // Generated from vec.rs.tera template. Edit the template, not the generated file.
 
-use crate::{BVec3, I16Vec3, I64Vec3, IVec2, IVec4, U16Vec3, U64Vec3, UVec3};
+use crate::{BVec3, BVec3A, I16Vec3, I64Vec3, IVec2, IVec4, U16Vec3, U64Vec3, UVec3};
 
 #[cfg(not(target_arch = "spirv"))]
 use core::fmt;
@@ -157,6 +157,30 @@ impl IVec3 {
         self.xy()
     }
 
+    /// Creates a 3D vector from `self` with the given value of `x`.
+    #[inline]
+    #[must_use]
+    pub fn with_x(mut self, x: i32) -> Self {
+        self.x = x;
+        self
+    }
+
+    /// Creates a 3D vector from `self` with the given value of `y`.
+    #[inline]
+    #[must_use]
+    pub fn with_y(mut self, y: i32) -> Self {
+        self.y = y;
+        self
+    }
+
+    /// Creates a 3D vector from `self` with the given value of `z`.
+    #[inline]
+    #[must_use]
+    pub fn with_z(mut self, z: i32) -> Self {
+        self.z = z;
+        self
+    }
+
     /// Computes the dot product of `self` and `rhs`.
     #[inline]
     #[must_use]
@@ -238,6 +262,24 @@ impl IVec3 {
     #[must_use]
     pub fn max_element(self) -> i32 {
         self.x.max(self.y.max(self.z))
+    }
+
+    /// Returns the sum of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x + self.y + ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_sum(self) -> i32 {
+        self.x + self.y + self.z
+    }
+
+    /// Returns the product of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x * self.y * ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_product(self) -> i32 {
+        self.x * self.y * self.z
     }
 
     /// Returns a vector mask containing the result of a `==` comparison for each element of
@@ -1399,5 +1441,24 @@ impl TryFrom<U64Vec3> for IVec3 {
             i32::try_from(v.y)?,
             i32::try_from(v.z)?,
         ))
+    }
+}
+
+impl From<BVec3> for IVec3 {
+    #[inline]
+    fn from(v: BVec3) -> Self {
+        Self::new(i32::from(v.x), i32::from(v.y), i32::from(v.z))
+    }
+}
+
+impl From<BVec3A> for IVec3 {
+    #[inline]
+    fn from(v: BVec3A) -> Self {
+        let bool_array: [bool; 3] = v.into();
+        Self::new(
+            i32::from(bool_array[0]),
+            i32::from(bool_array[1]),
+            i32::from(bool_array[2]),
+        )
     }
 }

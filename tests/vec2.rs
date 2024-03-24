@@ -48,6 +48,9 @@ macro_rules! impl_vec2_tests {
             let v = $vec2::new(t.0, t.1);
             assert_eq!(t, v.into());
 
+            assert_eq!($vec2::new(1 as $t, 0 as $t), BVec2::new(true, false).into());
+            assert_eq!($vec2::new(0 as $t, 1 as $t), BVec2::new(false, true).into());
+
             assert_eq!($vec2::new(1 as $t, 0 as $t), $vec2::X);
             assert_eq!($vec2::new(0 as $t, 1 as $t), $vec2::Y);
         });
@@ -79,6 +82,11 @@ macro_rules! impl_vec2_tests {
         glam_test!(test_splat, {
             let v = $vec2::splat(1 as $t);
             assert_eq!($vec2::ONE, v);
+        });
+
+        glam_test!(test_with, {
+            assert_eq!($vec2::X, $vec2::ZERO.with_x(1 as $t));
+            assert_eq!($vec2::Y, $vec2::ZERO.with_y(1 as $t));
         });
 
         glam_test!(test_accessors, {
@@ -181,6 +189,12 @@ macro_rules! impl_vec2_tests {
             assert_eq!($new(1 as $t, 2 as $t), b.max(a));
         });
 
+        glam_test!(test_sum_product, {
+            let a = $new(2 as $t, 3 as $t);
+            assert_eq!(a.element_sum(), 5 as $t);
+            assert_eq!(a.element_product(), 6 as $t);
+        });
+
         glam_test!(test_clamp, {
             fn vec(x: i32, y: i32) -> $vec2 {
                 $vec2::new(x as $t, y as $t)
@@ -253,6 +267,13 @@ macro_rules! impl_vec2_tests {
             b.y = 1 as $t;
             assert!(!b.cmpeq($vec2::ZERO).any());
             assert!(b.cmpeq($vec2::splat(1 as $t)).all());
+        });
+
+        glam_test!(test_mask_from_array_bool, {
+            assert_eq!($mask::new(false, false), $mask::from([false, false]));
+            assert_eq!($mask::new(true, false), $mask::from([true, false]));
+            assert_eq!($mask::new(false, true), $mask::from([false, true]));
+            assert_eq!($mask::new(true, true), $mask::from([true, true]));
         });
 
         glam_test!(test_mask_into_array_u32, {
@@ -761,11 +782,20 @@ macro_rules! impl_vec2_float_tests {
             );
         });
 
+        glam_test!(test_fract_gl, {
+            assert_approx_eq!($vec2::new(1.35, -1.5).fract_gl(), $vec2::new(0.35, 0.5));
+            assert_approx_eq!(
+                $vec2::new(-2000000.123, 1000000.123).fract_gl(),
+                $vec2::new(0.877, 0.123),
+                0.002
+            );
+        });
+
         glam_test!(test_fract, {
-            assert_approx_eq!($vec2::new(1.35, -1.5).fract(), $vec2::new(0.35, 0.5));
+            assert_approx_eq!($vec2::new(1.35, -1.5).fract(), $vec2::new(0.35, -0.5));
             assert_approx_eq!(
                 $vec2::new(-2000000.123, 1000000.123).fract(),
-                $vec2::new(0.877, 0.123),
+                $vec2::new(-0.123, 0.123),
                 0.002
             );
         });
@@ -802,6 +832,14 @@ macro_rules! impl_vec2_float_tests {
             assert_approx_eq!(v0, v0.lerp(v1, 0.0));
             assert_approx_eq!(v1, v0.lerp(v1, 1.0));
             assert_approx_eq!($vec2::ZERO, v0.lerp(v1, 0.5));
+        });
+
+        glam_test!(test_move_towards, {
+            let v0 = $vec2::new(-1.0, -1.0);
+            let v1 = $vec2::new(1.0, 1.0);
+            assert_approx_eq!(v0, v0.move_towards(v1, 0.0));
+            assert_approx_eq!(v1, v0.move_towards(v1, v0.distance(v1)));
+            assert_approx_eq!(v1, v0.move_towards(v1, v0.distance(v1) + 1.0));
         });
 
         glam_test!(test_midpoint, {
@@ -902,6 +940,11 @@ macro_rules! impl_vec2_float_tests {
                 $vec2::new(1.0, 1.0).mul_add($vec2::new(0.5, 2.0), $vec2::new(-1.0, -1.0)),
                 $vec2::new(-0.5, 1.0)
             );
+        });
+
+        glam_test!(test_fmt_float, {
+            let a = $vec2::new(1.0, 2.0);
+            assert_eq!(format!("{:.2}", a), "[1.00, 2.00]");
         });
 
         glam_test!(test_angle_conversion, {

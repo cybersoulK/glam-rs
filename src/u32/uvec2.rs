@@ -118,6 +118,22 @@ impl UVec2 {
         UVec3::new(self.x, self.y, z)
     }
 
+    /// Creates a 2D vector from `self` with the given value of `x`.
+    #[inline]
+    #[must_use]
+    pub fn with_x(mut self, x: u32) -> Self {
+        self.x = x;
+        self
+    }
+
+    /// Creates a 2D vector from `self` with the given value of `y`.
+    #[inline]
+    #[must_use]
+    pub fn with_y(mut self, y: u32) -> Self {
+        self.y = y;
+        self
+    }
+
     /// Computes the dot product of `self` and `rhs`.
     #[inline]
     #[must_use]
@@ -186,6 +202,24 @@ impl UVec2 {
     #[must_use]
     pub fn max_element(self) -> u32 {
         self.x.max(self.y)
+    }
+
+    /// Returns the sum of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x + self.y + ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_sum(self) -> u32 {
+        self.x + self.y
+    }
+
+    /// Returns the product of all elements of `self`.
+    ///
+    /// In other words, this computes `self.x * self.y * ..`.
+    #[inline]
+    #[must_use]
+    pub fn element_product(self) -> u32 {
+        self.x * self.y
     }
 
     /// Returns a vector mask containing the result of a `==` comparison for each element of
@@ -1145,5 +1179,12 @@ impl TryFrom<U64Vec2> for UVec2 {
     #[inline]
     fn try_from(v: U64Vec2) -> Result<Self, Self::Error> {
         Ok(Self::new(u32::try_from(v.x)?, u32::try_from(v.y)?))
+    }
+}
+
+impl From<BVec2> for UVec2 {
+    #[inline]
+    fn from(v: BVec2) -> Self {
+        Self::new(u32::from(v.x), u32::from(v.y))
     }
 }
