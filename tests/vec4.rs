@@ -4,7 +4,7 @@
 mod support;
 
 macro_rules! impl_vec4_tests {
-    ($t:ident, $new:ident, $vec4:ident, $vec3:ident, $vec2:ident, $mask:ident) => {
+    ($t:ident, $new:ident, $vec4:ident, $vec3:ident, $vec2:ident, $mask:ident, $masknew:ident) => {
         glam_test!(test_const, {
             const V0: $vec4 = $vec4::splat(1 as $t);
             const V1: $vec4 = $vec4::new(1 as $t, 2 as $t, 3 as $t, 4 as $t);
@@ -400,6 +400,33 @@ macro_rules! impl_vec4_tests {
             should_panic!({ $vec4::from_slice(&[0 as $t; 3]) });
         });
 
+        glam_test!(test_mask_new, {
+            assert_eq!(
+                $mask::new(false, false, false, false),
+                $masknew(false, false, false, false)
+            );
+            assert_eq!(
+                $mask::new(false, false, true, true),
+                $masknew(false, false, true, true)
+            );
+            assert_eq!(
+                $mask::new(true, true, false, false),
+                $masknew(true, true, false, false)
+            );
+            assert_eq!(
+                $mask::new(false, true, false, true),
+                $masknew(false, true, false, true)
+            );
+            assert_eq!(
+                $mask::new(true, false, true, false),
+                $masknew(true, false, true, false)
+            );
+            assert_eq!(
+                $mask::new(true, true, true, true),
+                $masknew(true, true, true, true)
+            );
+        });
+
         glam_test!(test_mask_from_array_bool, {
             assert_eq!(
                 $mask::new(false, false, false, false),
@@ -426,6 +453,7 @@ macro_rules! impl_vec4_tests {
                 $mask::from([true, true, true, true])
             );
         });
+
         glam_test!(test_mask_into_array_u32, {
             assert_eq!(
                 Into::<[u32; 4]>::into($mask::new(false, false, false, false)),
@@ -722,8 +750,8 @@ macro_rules! impl_vec4_tests {
 }
 
 macro_rules! impl_vec4_signed_tests {
-    ($t:ident, $new:ident, $vec4:ident, $vec3:ident, $vec2:ident, $mask:ident) => {
-        impl_vec4_tests!($t, $new, $vec4, $vec3, $vec2, $mask);
+    ($t:ident, $new:ident, $vec4:ident, $vec3:ident, $vec2:ident, $mask:ident, $masknew:ident) => {
+        impl_vec4_tests!($t, $new, $vec4, $vec3, $vec2, $mask, $masknew);
 
         glam_test!(test_neg, {
             let a = $new(1 as $t, 2 as $t, 3 as $t, 4 as $t);
@@ -818,8 +846,8 @@ macro_rules! impl_vec4_signed_tests {
 }
 
 macro_rules! impl_vec4_signed_integer_tests {
-    ($t:ident, $new:ident, $vec4:ident, $vec3:ident, $vec2:ident, $mask:ident) => {
-        impl_vec4_signed_tests!($t, $new, $vec4, $vec3, $vec2, $mask);
+    ($t:ident, $new:ident, $vec4:ident, $vec3:ident, $vec2:ident, $mask:ident, $masknew:ident) => {
+        impl_vec4_signed_tests!($t, $new, $vec4, $vec3, $vec2, $mask, $masknew);
 
         glam_test!(test_signum, {
             assert_eq!($vec4::ZERO.signum(), $vec4::ZERO);
@@ -861,13 +889,9 @@ macro_rules! impl_vec4_eq_hash_tests {
 }
 
 macro_rules! impl_vec4_float_tests {
-    ($t:ident, $new:ident, $vec4:ident, $vec3:ident, $vec2:ident, $mask:ident) => {
-        impl_vec4_signed_tests!($t, $new, $vec4, $vec3, $vec2, $mask);
+    ($t:ident, $new:ident, $vec4:ident, $vec3:ident, $vec2:ident, $mask:ident, $masknew:ident) => {
+        impl_vec4_signed_tests!($t, $new, $vec4, $vec3, $vec2, $mask, $masknew);
         impl_vec_float_normalize_tests!($t, $vec4);
-
-        use core::$t::INFINITY;
-        use core::$t::NAN;
-        use core::$t::NEG_INFINITY;
 
         glam_test!(test_vec4_nan, {
             assert!($vec4::NAN.is_nan());
@@ -1008,10 +1032,10 @@ macro_rules! impl_vec4_float_tests {
             assert_eq!($vec4::new(0.0, 0.0, 0.0, 11.123).round().w, 11.0);
             assert_eq!($vec4::new(0.0, 0.0, 11.501, 0.0).round().z, 12.0);
             assert_eq!(
-                $vec4::new(NEG_INFINITY, INFINITY, 1.0, -1.0).round(),
-                $vec4::new(NEG_INFINITY, INFINITY, 1.0, -1.0)
+                $vec4::new($t::NEG_INFINITY, $t::INFINITY, 1.0, -1.0).round(),
+                $vec4::new($t::NEG_INFINITY, $t::INFINITY, 1.0, -1.0)
             );
-            assert!($vec4::new(NAN, 0.0, 0.0, 1.0).round().x.is_nan());
+            assert!($vec4::new($t::NAN, 0.0, 0.0, 1.0).round().x.is_nan());
         });
 
         glam_test!(test_floor, {
@@ -1020,10 +1044,10 @@ macro_rules! impl_vec4_float_tests {
                 $vec4::new(1.0, 1.0, -2.0, 1.0)
             );
             assert_eq!(
-                $vec4::new(INFINITY, NEG_INFINITY, 0.0, 0.0).floor(),
-                $vec4::new(INFINITY, NEG_INFINITY, 0.0, 0.0)
+                $vec4::new($t::INFINITY, $t::NEG_INFINITY, 0.0, 0.0).floor(),
+                $vec4::new($t::INFINITY, $t::NEG_INFINITY, 0.0, 0.0)
             );
-            assert!($vec4::new(0.0, NAN, 0.0, 0.0).floor().y.is_nan());
+            assert!($vec4::new(0.0, $t::NAN, 0.0, 0.0).floor().y.is_nan());
             assert_eq!(
                 $vec4::new(-0.0, -2000000.123, 10000000.123, 1000.9).floor(),
                 $vec4::new(-0.0, -2000001.0, 10000000.0, 1000.0)
@@ -1060,10 +1084,10 @@ macro_rules! impl_vec4_float_tests {
                 $vec4::new(2.0, 2.0, -1.0, 1235.0)
             );
             assert_eq!(
-                $vec4::new(INFINITY, NEG_INFINITY, 0.0, 0.0).ceil(),
-                $vec4::new(INFINITY, NEG_INFINITY, 0.0, 0.0)
+                $vec4::new($t::INFINITY, $t::NEG_INFINITY, 0.0, 0.0).ceil(),
+                $vec4::new($t::INFINITY, $t::NEG_INFINITY, 0.0, 0.0)
             );
-            assert!($vec4::new(0.0, 0.0, NAN, 0.0).ceil().z.is_nan());
+            assert!($vec4::new(0.0, 0.0, $t::NAN, 0.0).ceil().z.is_nan());
             assert_eq!(
                 $vec4::new(-1234.1234, -2000000.123, 1000000.123, 1000.9).ceil(),
                 $vec4::new(-1234.0, -2000000.0, 1000001.0, 1001.0)
@@ -1076,10 +1100,10 @@ macro_rules! impl_vec4_float_tests {
                 $vec4::new(1.0, 1.0, -1.0, 1.0)
             );
             assert_eq!(
-                $vec4::new(INFINITY, NEG_INFINITY, 0.0, 0.0).trunc(),
-                $vec4::new(INFINITY, NEG_INFINITY, 0.0, 0.0)
+                $vec4::new($t::INFINITY, $t::NEG_INFINITY, 0.0, 0.0).trunc(),
+                $vec4::new($t::INFINITY, $t::NEG_INFINITY, 0.0, 0.0)
             );
-            assert!($vec4::new(0.0, NAN, 0.0, 0.0).trunc().y.is_nan());
+            assert!($vec4::new(0.0, $t::NAN, 0.0, 0.0).trunc().y.is_nan());
             assert_eq!(
                 $vec4::new(-0.0, -2000000.123, 10000000.123, 1000.9).trunc(),
                 $vec4::new(-0.0, -2000000.0, 10000000.0, 1000.0)
@@ -1113,10 +1137,10 @@ macro_rules! impl_vec4_float_tests {
         glam_test!(test_is_finite, {
             assert!($vec4::new(0.0, 0.0, 0.0, 0.0).is_finite());
             assert!($vec4::new(-1e-10, 1.0, 1e10, 42.0).is_finite());
-            assert!(!$vec4::new(INFINITY, 0.0, 0.0, 0.0).is_finite());
-            assert!(!$vec4::new(0.0, NAN, 0.0, 0.0).is_finite());
-            assert!(!$vec4::new(0.0, 0.0, NEG_INFINITY, 0.0).is_finite());
-            assert!(!$vec4::new(0.0, 0.0, 0.0, NAN).is_finite());
+            assert!(!$vec4::new($t::INFINITY, 0.0, 0.0, 0.0).is_finite());
+            assert!(!$vec4::new(0.0, $t::NAN, 0.0, 0.0).is_finite());
+            assert!(!$vec4::new(0.0, 0.0, $t::NEG_INFINITY, 0.0).is_finite());
+            assert!(!$vec4::new(0.0, 0.0, 0.0, $t::NAN).is_finite());
             assert!(!$vec4::INFINITY.is_finite());
             assert!(!$vec4::NEG_INFINITY.is_finite());
         });
@@ -1199,6 +1223,22 @@ macro_rules! impl_vec4_float_tests {
         glam_test!(test_fmt_float, {
             let a = $vec4::new(1.0, 2.0, 3.0, 4.0);
             assert_eq!(format!("{:.2}", a), "[1.00, 2.00, 3.00, 4.00]");
+        });
+
+        glam_test!(test_reflect, {
+            let incident = $vec4::new(1.0, -1.0, 1.0, 1.0);
+            let normal = $vec4::Y;
+            assert_approx_eq!(incident.reflect(normal), $vec4::ONE);
+        });
+
+        glam_test!(test_refract, {
+            let incident = $vec4::NEG_ONE.normalize();
+            let normal = $vec4::ONE.normalize();
+            assert_approx_eq!(incident.refract(normal, 0.5), incident);
+
+            let incident = $vec4::new(1.0, -1.0, 0.0, 0.0).normalize();
+            let normal = $vec4::Y;
+            assert_approx_eq!(incident.refract(normal, 1.5), $vec4::ZERO);
         });
     };
 }
@@ -1382,9 +1422,9 @@ macro_rules! impl_vec4_bit_op_tests {
 
 mod vec4 {
     #[cfg(feature = "scalar-math")]
-    use glam::BVec4;
+    use glam::{bvec4, BVec4};
     #[cfg(not(feature = "scalar-math"))]
-    use glam::BVec4A;
+    use glam::{bvec4a, BVec4A};
     use glam::{vec4, Vec2, Vec3, Vec4};
 
     glam_test!(test_align, {
@@ -1667,14 +1707,14 @@ mod vec4 {
     });
 
     #[cfg(not(feature = "scalar-math"))]
-    impl_vec4_float_tests!(f32, vec4, Vec4, Vec3, Vec2, BVec4A);
+    impl_vec4_float_tests!(f32, vec4, Vec4, Vec3, Vec2, BVec4A, bvec4a);
 
     #[cfg(feature = "scalar-math")]
-    impl_vec4_float_tests!(f32, vec4, Vec4, Vec3, Vec2, BVec4);
+    impl_vec4_float_tests!(f32, vec4, Vec4, Vec3, Vec2, BVec4, bvec4);
 }
 
 mod dvec4 {
-    use glam::{dvec4, BVec4, DVec2, DVec3, DVec4, IVec4, UVec4, Vec4};
+    use glam::{bvec4, dvec4, BVec4, DVec2, DVec3, DVec4, IVec4, UVec4, Vec4};
 
     glam_test!(test_align, {
         use std::mem;
@@ -1702,12 +1742,12 @@ mod dvec4 {
         );
     });
 
-    impl_vec4_float_tests!(f64, dvec4, DVec4, DVec3, DVec2, BVec4);
+    impl_vec4_float_tests!(f64, dvec4, DVec4, DVec3, DVec2, BVec4, bvec4);
 }
 
 mod i16vec4 {
     use glam::{
-        i16vec4, BVec4, I16Vec2, I16Vec3, I16Vec4, I64Vec4, IVec4, U16Vec4, U64Vec4, UVec4,
+        bvec4, i16vec4, BVec4, I16Vec2, I16Vec3, I16Vec4, I64Vec4, IVec4, U16Vec4, U64Vec4, UVec4,
     };
 
     glam_test!(test_align, {
@@ -1854,7 +1894,7 @@ mod i16vec4 {
         );
     });
 
-    impl_vec4_signed_integer_tests!(i16, i16vec4, I16Vec4, I16Vec3, I16Vec2, BVec4);
+    impl_vec4_signed_integer_tests!(i16, i16vec4, I16Vec4, I16Vec3, I16Vec2, BVec4, bvec4);
     impl_vec4_eq_hash_tests!(i16, i16vec4);
 
     impl_vec4_scalar_shift_op_tests!(I16Vec4, -2, 2);
@@ -1866,7 +1906,7 @@ mod i16vec4 {
 
 mod u16vec4 {
     use glam::{
-        u16vec4, BVec4, I16Vec4, I64Vec4, IVec4, U16Vec2, U16Vec3, U16Vec4, U64Vec4, UVec4,
+        bvec4, u16vec4, BVec4, I16Vec4, I64Vec4, IVec4, U16Vec2, U16Vec3, U16Vec4, U64Vec4, UVec4,
     };
 
     glam_test!(test_align, {
@@ -2012,7 +2052,7 @@ mod u16vec4 {
         );
     });
 
-    impl_vec4_tests!(u16, u16vec4, U16Vec4, U16Vec3, U16Vec2, BVec4);
+    impl_vec4_tests!(u16, u16vec4, U16Vec4, U16Vec3, U16Vec2, BVec4, bvec4);
     impl_vec4_eq_hash_tests!(u16, u16vec4);
 
     impl_vec4_scalar_shift_op_tests!(U16Vec4, 0, 2);
@@ -2023,7 +2063,9 @@ mod u16vec4 {
 }
 
 mod ivec4 {
-    use glam::{ivec4, BVec4, I16Vec4, I64Vec4, IVec2, IVec3, IVec4, U16Vec4, U64Vec4, UVec4};
+    use glam::{
+        bvec4, ivec4, BVec4, I16Vec4, I64Vec4, IVec2, IVec3, IVec4, U16Vec4, U64Vec4, UVec4,
+    };
 
     glam_test!(test_align, {
         use std::mem;
@@ -2162,7 +2204,7 @@ mod ivec4 {
         );
     });
 
-    impl_vec4_signed_integer_tests!(i32, ivec4, IVec4, IVec3, IVec2, BVec4);
+    impl_vec4_signed_integer_tests!(i32, ivec4, IVec4, IVec3, IVec2, BVec4, bvec4);
     impl_vec4_eq_hash_tests!(i32, ivec4);
 
     impl_vec4_scalar_shift_op_tests!(IVec4, -2, 2);
@@ -2173,7 +2215,9 @@ mod ivec4 {
 }
 
 mod uvec4 {
-    use glam::{uvec4, BVec4, I16Vec4, I64Vec4, IVec4, U16Vec4, U64Vec4, UVec2, UVec3, UVec4};
+    use glam::{
+        bvec4, uvec4, BVec4, I16Vec4, I64Vec4, IVec4, U16Vec4, U64Vec4, UVec2, UVec3, UVec4,
+    };
 
     glam_test!(test_align, {
         use std::mem;
@@ -2306,7 +2350,7 @@ mod uvec4 {
         );
     });
 
-    impl_vec4_tests!(u32, uvec4, UVec4, UVec3, UVec2, BVec4);
+    impl_vec4_tests!(u32, uvec4, UVec4, UVec3, UVec2, BVec4, bvec4);
     impl_vec4_eq_hash_tests!(u32, uvec4);
 
     impl_vec4_scalar_shift_op_tests!(UVec4, 0, 2);
@@ -2318,7 +2362,7 @@ mod uvec4 {
 
 mod i64vec4 {
     use glam::{
-        i64vec4, BVec4, I16Vec4, I64Vec2, I64Vec3, I64Vec4, IVec4, U16Vec4, U64Vec4, UVec4,
+        bvec4, i64vec4, BVec4, I16Vec4, I64Vec2, I64Vec3, I64Vec4, IVec4, U16Vec4, U64Vec4, UVec4,
     };
 
     glam_test!(test_align, {
@@ -2392,7 +2436,7 @@ mod i64vec4 {
         );
     });
 
-    impl_vec4_signed_integer_tests!(i64, i64vec4, I64Vec4, I64Vec3, I64Vec2, BVec4);
+    impl_vec4_signed_integer_tests!(i64, i64vec4, I64Vec4, I64Vec3, I64Vec2, BVec4, bvec4);
     impl_vec4_eq_hash_tests!(i64, i64vec4);
 
     impl_vec4_scalar_shift_op_tests!(I64Vec4, -2, 2);
@@ -2404,7 +2448,7 @@ mod i64vec4 {
 
 mod u64vec4 {
     use glam::{
-        u64vec4, BVec4, I16Vec4, I64Vec4, IVec4, U16Vec4, U64Vec2, U64Vec3, U64Vec4, UVec4,
+        bvec4, u64vec4, BVec4, I16Vec4, I64Vec4, IVec4, U16Vec4, U64Vec2, U64Vec3, U64Vec4, UVec4,
     };
 
     glam_test!(test_align, {
@@ -2473,7 +2517,7 @@ mod u64vec4 {
         );
     });
 
-    impl_vec4_tests!(u64, u64vec4, U64Vec4, U64Vec3, U64Vec2, BVec4);
+    impl_vec4_tests!(u64, u64vec4, U64Vec4, U64Vec3, U64Vec2, BVec4, bvec4);
     impl_vec4_eq_hash_tests!(u64, u64vec4);
 
     impl_vec4_scalar_shift_op_tests!(U64Vec4, 0, 2);

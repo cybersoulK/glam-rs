@@ -60,6 +60,8 @@ SIMD is supported on `x86`, `x86_64` and `wasm32` targets.
 * `SSE2` is enabled by default on `x86_64` targets.
 * To enable `SSE2` on `x86` targets add `-C target-feature=+sse2` to
   `RUSTCFLAGS`.
+* `NEON` is enabled by default on `aarch64` targets.
+* To enable `NEON` on `aarch64` targets add `-C target-feature=+neon` to `RUSTFLAGS`.
 * To enable `simd128` on `wasm32` targets add `-C target-feature=+simd128` to
   `RUSTFLAGS`.
 * Experimental [portable simd] support can be enabled with the `core-simd`
@@ -78,7 +80,7 @@ defined in `std`. For example:
 
 ```toml
 [dependencies]
-glam = { version = "0.27", default-features = false, features = ["libm"] }
+glam = { version = "0.28", default-features = false, features = ["libm"] }
 ```
 
 To support both `std` and `no_std` builds in project, you can use the following
@@ -92,7 +94,7 @@ std = ["glam/std"]
 libm = ["glam/libm"]
 
 [dependencies]
-glam = { version = "0.27", default-features = false }
+glam = { version = "0.28", default-features = false }
 ```
 
 ### Optional features

@@ -71,7 +71,7 @@ fn main() -> anyhow::Result<()> {
     if let Some(glob) = glob {
         for k in output_pairs.keys() {
             if glob.is_match(k) {
-                output_paths.push(k)
+                output_paths.push(k);
             }
         }
         if output_paths.is_empty() {
@@ -79,7 +79,7 @@ fn main() -> anyhow::Result<()> {
         };
     } else {
         for k in output_pairs.keys() {
-            output_paths.push(k)
+            output_paths.push(k);
         }
     };
 
@@ -108,6 +108,9 @@ fn main() -> anyhow::Result<()> {
         }
 
         let full_output_path = workdir.join(output_path);
+
+        let output_dir = full_output_path.parent().unwrap();
+        std::fs::create_dir_all(output_dir)?;
 
         if check {
             match std::fs::read_to_string(&full_output_path) {

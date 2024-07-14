@@ -8,6 +8,8 @@
         {% set simd_t = "v128" %}
     {% elif is_coresimd %}
         {% set simd_t = "f32x4" %}
+    {% elif is_neon %}
+        {% set simd_t = "float32x4_t" %}
     {% endif %}
 {% endif %}
 
@@ -31,7 +33,7 @@
 
 use crate::{
     {{ scalar_t }}::math,
-    euler::{EulerFromQuaternion, EulerRot, EulerToQuaternion},
+    euler::{EulerRot, FromEuler, ToEuler},
     {% if scalar_t == "f32" %}
         DQuat, Mat3, Mat3A, Mat4, Vec2, Vec3, Vec3A, Vec4,
     {% elif scalar_t == "f64" %}
@@ -43,6 +45,8 @@ use crate::{
         wasm32::*,
     {% elif is_coresimd %}
         coresimd::*,
+    {% elif is_neon %}
+        neon::*,
     {% endif %}
 };
 
@@ -55,6 +59,8 @@ use core::arch::x86_64::*;
 use core::arch::wasm32::*;
 {% elif is_coresimd %}
 use core::simd::*;
+{% elif is_neon %}
+use core::arch::aarch64::*;
 {% endif %}
 
 #[cfg(not(target_arch = "spirv"))]
@@ -67,7 +73,7 @@ use core::ops::{
     Add, Div, Mul, MulAssign, Neg, Sub
 };
 
-{% if is_sse2 %}
+{% if is_sse2 or is_neon %}
 #[repr(C)]
 union UnionCast {
     a: [f32; 4],
@@ -146,6 +152,10 @@ impl {{ self_t }} {
             Self(f32x4(x, y, z, w))
         {% elif is_coresimd %}
             Self(f32x4::from_array([x, y, z, w]))
+        {% elif is_neon %}
+            unsafe { UnionCast { a: [x, y, z, w] }.v }
+        {% else %}
+            unimplemented!()
         {% endif %}
     }
 
@@ -197,6 +207,9 @@ impl {{ self_t }} {
         {% if is_sse2 %}
             assert!(slice.len() >= 4);
             Self(unsafe { _mm_loadu_ps(slice.as_ptr()) })
+        {% elif is_neon %}
+            assert!(slice.len() >= 4);
+            Self(unsafe { vld1q_f32(slice.as_ptr()) })
         {% else %}
             Self::from_xyzw(slice[0], slice[1], slice[2], slice[3])
         {% endif %}
@@ -212,6 +225,9 @@ impl {{ self_t }} {
         {% if is_sse2 %}
             assert!(slice.len() >= 4);
             unsafe { _mm_storeu_ps(slice.as_mut_ptr(), self.0) }
+        {% elif is_neon %}
+            assert!(slice.len() >= 4);
+            unsafe { vst1q_f32(slice.as_mut_ptr(), self.0) }
         {% else %}
             slice[0] = self.x;
             slice[1] = self.y;
@@ -278,14 +294,22 @@ impl {{ self_t }} {
     #[inline]
     #[must_use]
     pub fn from_euler(euler: EulerRot, a: {{ scalar_t }}, b: {{ scalar_t }}, c: {{ scalar_t }}) -> Self {
-        euler.new_quat(a, b, c)
+        Self::from_euler_angles(euler, a, b, c)
     }
 
     /// From the columns of a 3x3 rotation matrix.
+    ///
+    /// Note if the input axes contain scales, shears, or other non-rotation transformations then
+    /// the output of this function is ill-defined.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if any axis is not normalized when `glam_assert` is enabled.
     #[inline]
     #[must_use]
     pub(crate) fn from_rotation_axes(x_axis: {{ vec3_t }}, y_axis: {{ vec3_t }}, z_axis: {{ vec3_t }}) -> Self {
-        // Based on https://github.com/microsoft/DirectXMath `XM$quaternionRotationMatrix`
+        glam_assert!(x_axis.is_normalized() && y_axis.is_normalized() && z_axis.is_normalized());
+        // Based on https://github.com/microsoft/DirectXMath `XMQuaternionRotationMatrix`
         let (m00, m01, m02) = x_axis.into();
         let (m10, m11, m12) = y_axis.into();
         let (m20, m21, m22) = z_axis.into();
@@ -343,6 +367,13 @@ impl {{ self_t }} {
     }
 
     /// Creates a quaternion from a 3x3 rotation matrix.
+    ///
+    /// Note if the input matrix contain scales, shears, or other non-rotation transformations then
+    /// the resulting quaternion will be ill-defined.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if any input matrix column is not normalized when `glam_assert` is enabled.
     #[inline]
     #[must_use]
     pub fn from_mat3(mat: &{{ mat3_t }}) -> Self {
@@ -355,6 +386,13 @@ impl {{ self_t }} {
 
 {% if scalar_t == "f32" %}
     /// Creates a quaternion from a 3x3 SIMD aligned rotation matrix.
+    ///
+    /// Note if the input matrix contain scales, shears, or other non-rotation transformations then
+    /// the resulting quaternion will be ill-defined.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if any input matrix column is not normalized when `glam_assert` is enabled.
     #[inline]
     #[must_use]
     pub fn from_mat3a(mat: &Mat3A) -> Self {
@@ -366,7 +404,15 @@ impl {{ self_t }} {
     }
 {% endif %}
 
-    /// Creates a quaternion from a 3x3 rotation matrix inside a homogeneous 4x4 matrix.
+    /// Creates a quaternion from the upper 3x3 rotation matrix inside a homogeneous 4x4 matrix.
+    ///
+    /// Note if the upper 3x3 matrix contain scales, shears, or other non-rotation transformations
+    /// then the resulting quaternion will be ill-defined.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if any column of the upper 3x3 rotation matrix is not normalized when
+    /// `glam_assert` is enabled.
     #[inline]
     #[must_use]
     pub fn from_mat4(mat: &{{ mat4_t }}) -> Self {
@@ -395,7 +441,7 @@ impl {{ self_t }} {
         glam_assert!(from.is_normalized());
         glam_assert!(to.is_normalized());
 
-        const ONE_MINUS_EPS: {{ scalar_t }} = 1.0 - 2.0 * core::{{ scalar_t }}::EPSILON;
+        const ONE_MINUS_EPS: {{ scalar_t }} = 1.0 - 2.0 * {{ scalar_t }}::EPSILON;
         let dot = from.dot(to);
         if dot > ONE_MINUS_EPS {
             // 0° singularity: from ≈ to
@@ -451,7 +497,7 @@ impl {{ self_t }} {
         glam_assert!(from.is_normalized());
         glam_assert!(to.is_normalized());
 
-        const ONE_MINUS_EPSILON: {{ scalar_t }} = 1.0 - 2.0 * core::{{ scalar_t }}::EPSILON;
+        const ONE_MINUS_EPSILON: {{ scalar_t }} = 1.0 - 2.0 * {{ scalar_t }}::EPSILON;
         let dot = from.dot(to);
         if dot > ONE_MINUS_EPSILON {
             // 0° singularity: from ≈ to
@@ -499,8 +545,8 @@ impl {{ self_t }} {
     /// Returns the rotation angles for the given euler rotation sequence.
     #[inline]
     #[must_use]
-    pub fn to_euler(self, euler: EulerRot) -> ({{ scalar_t }}, {{ scalar_t }}, {{ scalar_t }}) {
-        euler.convert_quat(self)
+    pub fn to_euler(self, order: EulerRot) -> ({{ scalar_t }}, {{ scalar_t }}, {{ scalar_t }}) {
+        self.to_euler_angles(order)
     }
 
     /// `[x, y, z, w]`
@@ -533,6 +579,11 @@ impl {{ self_t }} {
         {% elif is_coresimd %}
             const SIGN: f32x4 = f32x4::from_array([-1.0, -1.0, -1.0, 1.0]);
             Self(self.0.mul(SIGN))
+        {% elif is_neon %}
+            const SIGN: float32x4_t = f32x4_from_array([-1.0, -1.0, -1.0, 1.0]);
+            Self(unsafe { vmulq_f32(self.0, SIGN) })
+        {% else %}
+            unimplemented!()
         {% endif %}
     }
 
@@ -660,6 +711,29 @@ impl {{ self_t }} {
         glam_assert!(self.is_normalized() && rhs.is_normalized());
         math::acos_approx(math::abs(self.dot(rhs))) * 2.0
     }
+    
+    /// Rotates towards `rhs` up to `max_angle` (in radians).
+    ///
+    /// When `max_angle` is `0.0`, the result will be equal to `self`. When `max_angle` is equal to
+    /// `self.angle_between(rhs)`, the result will be equal to `rhs`. If `max_angle` is negative,
+    /// rotates towards the exact opposite of `rhs`. Will not go past the target.
+    ///
+    /// Both quaternions must be normalized.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `self` or `rhs` are not normalized when `glam_assert` is enabled.
+    #[inline]
+    #[must_use]
+    pub fn rotate_towards(&self, rhs: Self, max_angle: {{ scalar_t }}) -> Self {
+        glam_assert!(self.is_normalized() && rhs.is_normalized());
+        let angle = self.angle_between(rhs);
+        if angle <= 1e-4 {
+            return *self;
+        }
+        let s = (max_angle / angle).clamp(-1.0, 1.0);
+        self.slerp(rhs, s)
+    }
 
     /// Returns true if the absolute difference of all elements between `self` and `rhs`
     /// is less than or equal to `max_abs_diff`.
@@ -736,6 +810,29 @@ impl {{ self_t }} {
             let bias = f32x4_bitand(dot, NEG_ZERO);
             let interpolated = start + ((f32x4_bitxor(end, bias) - start) * f32x4::splat(s));
             {{ self_t }}(interpolated).normalize()
+        {% elif is_neon %}
+            const NEG_ZERO: float32x4_t = f32x4_from_array([-0.0; 4]);
+            let start = self.0;
+            let end = end.0;
+            unsafe {
+                let dot = dot4_into_f32x4(start, end);
+                // Calculate the bias, if the dot product is positive or zero, there is no bias
+                // but if it is negative, we want to flip the 'end' rotation XYZW components
+                let bias = vandq_u32(vreinterpretq_u32_f32(dot), vreinterpretq_u32_f32(NEG_ZERO));
+                let interpolated = vaddq_f32(
+                    vmulq_f32(
+                        vsubq_f32(
+                            vreinterpretq_f32_u32(veorq_u32(vreinterpretq_u32_f32(end), bias)),
+                            start,
+                        ),
+                        vld1q_dup_f32(&s),
+                    ),
+                    start,
+                );
+                {{ self_t }}(interpolated).normalize()
+            }
+        {% else %}
+            unimplemented!()
         {% endif %}
     }
 
@@ -834,6 +931,23 @@ impl {{ self_t }} {
                 let theta_sin = simd_swizzle!(tmp, [2, 2, 2, 2]);
 
                 Self(self.0.mul(scale1).add(end.0.mul(scale2)).div(theta_sin))
+            {% elif is_neon %}
+                let x = math::sin(theta * (1.0 - s));
+                let y = math::sin(theta * s);
+                let z = math::sin(theta);
+                let w = 0.0;
+                unsafe {
+                    let tmp = vld1q_f32([x, y, z, w].as_ptr());
+
+                    let scale1 = vdupq_laneq_f32(tmp, 0);
+                    let scale2 = vdupq_laneq_f32(tmp, 1);
+                    let theta_sin = vdupq_laneq_f32(tmp, 2);
+
+                    Self(vdivq_f32(
+                        vaddq_f32(vmulq_f32(self.0, scale1), vmulq_f32(end.0, scale2)),
+                        theta_sin,
+                    ))
+                }
             {% endif %}
         }
     }
@@ -984,10 +1098,59 @@ impl {{ self_t }} {
             let nlyrz_lxrz_lwrz_wlzrz = lyrz_lxrz_lwrz_lzrz * CONTROL_YXWZ;
             let result1 = lzry_lwry_nlxry_nlyry + nlyrz_lxrz_lwrz_wlzrz;
             Self(result0 + result1)
+        {% elif is_neon %}
+            unsafe {
+                let lhs = self.0;
+                let rhs = rhs.0;
+
+                const CONTROL_WZYX: float32x4_t = f32x4_from_array([1.0, -1.0, 1.0, -1.0]);
+                const CONTROL_ZWXY: float32x4_t = f32x4_from_array([1.0, 1.0, -1.0, -1.0]);
+                const CONTROL_YXWZ: float32x4_t = f32x4_from_array([-1.0, 1.0, 1.0, -1.0]);
+
+                let r_xxxx = vdupq_laneq_f32(lhs, 0);
+                let r_yyyy = vdupq_laneq_f32(lhs, 1);
+                let r_zzzz = vdupq_laneq_f32(lhs, 2);
+                let r_wwww = vdupq_laneq_f32(lhs, 3);
+
+                let lxrw_lyrw_lzrw_lwrw = vmulq_f32(r_wwww, rhs);
+                //let l_wzyx = simd_swizzle!(rhs, [3, 2, 1, 0]);
+                let l_wzyx = vrev64q_f32(rhs);
+                let l_wzyx = vextq_f32(l_wzyx, l_wzyx, 2);
+
+                let lwrx_lzrx_lyrx_lxrx = vmulq_f32(r_xxxx, l_wzyx);
+                //let l_zwxy = simd_swizzle!(l_wzyx, [1, 0, 3, 2]);
+                let l_zwxy = vrev64q_f32(l_wzyx);
+
+                let lwrx_nlzrx_lyrx_nlxrx = vmulq_f32(lwrx_lzrx_lyrx_lxrx, CONTROL_WZYX);
+
+                let lzry_lwry_lxry_lyry = vmulq_f32(r_yyyy, l_zwxy);
+                // let l_yxwz = simd_swizzle!(l_zwxy, [3, 2, 1, 0]);
+                let l_yxwz = vrev64q_f32(l_zwxy);
+                let l_yxwz = vextq_f32(l_yxwz, l_yxwz, 2);
+
+                let lzry_lwry_nlxry_nlyry = vmulq_f32(lzry_lwry_lxry_lyry, CONTROL_ZWXY);
+
+                let lyrz_lxrz_lwrz_lzrz = vmulq_f32(r_zzzz, l_yxwz);
+                let result0 = vaddq_f32(lxrw_lyrw_lzrw_lwrw, lwrx_nlzrx_lyrx_nlxrx);
+
+                let nlyrz_lxrz_lwrz_wlzrz = vmulq_f32(lyrz_lxrz_lwrz_lzrz, CONTROL_YXWZ);
+                let result1 = vaddq_f32(lzry_lwry_nlxry_nlyry, nlyrz_lxrz_lwrz_wlzrz);
+                Self(vaddq_f32(result0, result1))
+            }
+        {% else %}
+            unimplemented!()
         {% endif %}
     }
 
     /// Creates a quaternion from a 3x3 rotation matrix inside a 3D affine transform.
+    ///
+    /// Note if the input affine matrix contain scales, shears, or other non-rotation
+    /// transformations then the resulting quaternion will be ill-defined.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if any input affine matrix column is not normalized when `glam_assert` is
+    /// enabled.
     #[inline]
     #[must_use]
     pub fn from_affine3(a: &crate::{{ affine3_t }}) -> Self {
@@ -1043,6 +1206,21 @@ impl {{ self_t }} {
                     .add(b.mul(dot3_into_f32x4(rhs.0, b).mul(TWO)))
                     .add(Vec3A(b).cross(rhs).0.mul(w.mul(TWO))),
             )
+        {% elif is_neon %}
+            unsafe {
+                let w = self.w;
+                let b = Vec3A::from(self.0);
+                let b2 = b.length_squared();
+                Vec3A(vaddq_f32(
+                    vaddq_f32(
+                        vmulq_n_f32(rhs.0, (w * w) - b2),
+                        vmulq_n_f32(b.0, rhs.dot(b) * 2.0),
+                    ),
+                    vmulq_n_f32(b.cross(rhs).0, w * 2.0),
+                ))
+            }
+        {% else %}
+            unimplemented!()
         {% endif %}
     }
 
@@ -1051,26 +1229,11 @@ impl {{ self_t }} {
     pub fn as_dquat(self) -> DQuat {
         DQuat::from_xyzw(self.x as f64, self.y as f64, self.z as f64, self.w as f64)
     }
-
-    #[inline]
-    #[must_use]
-    #[deprecated(since="0.24.2", note="Use as_dquat() instead")]
-    pub fn as_f64(self) -> DQuat {
-        self.as_dquat()
-    }
-
 {% elif scalar_t == "f64" %}
     #[inline]
     #[must_use]
     pub fn as_quat(self) -> Quat {
         Quat::from_xyzw(self.x as f32, self.y as f32, self.z as f32, self.w as f32)
-    }
-
-    #[inline]
-    #[must_use]
-    #[deprecated(since="0.24.2", note="Use as_quat() instead")]
-    pub fn as_f32(self) -> Quat {
-        self.as_quat()
     }
 {% endif %}
 }
