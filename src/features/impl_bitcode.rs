@@ -4,17 +4,17 @@ struct Decoder;
 
 macro_rules! impl_bitcode {
     ($type:ident, $array_type:ty) => {
-        impl Encode for $type { type Encoder = Encoder; }
-        impl<'a> Decode<'a> for $type { type Decoder = Decoder; }
+        impl bitcode::Encode for $type { type Encoder = Encoder; }
+        impl<'a> bitcode::Decode<'a> for $type { type Decoder = Decoder; }
 
-        impl Encoder<$type> for Encoder {
+        impl bitcode::Encoder<$type> for Encoder {
             fn encode(&mut self, value: &$type) {
                 let arr = value.to_array();
                 self.encode(&arr);
             }
         }
 
-        impl<'a> Decoder<'a, $type> for Decoder {
+        impl<'a> bitcode::Decoder<'a, $type> for Decoder {
             fn decode(&mut self) -> $type {
                 let arr: $array_type = self.decode();
                 $type::from_array(arr)
