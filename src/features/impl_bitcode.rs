@@ -1,4 +1,3 @@
-
 macro_rules! impl_to_from_array {
     ($type:ident, $array_type:ty) => {
 
@@ -14,28 +13,30 @@ macro_rules! impl_to_from_array {
 }
 
 
-macro_rules! impl_borsh {
+macro_rules! impl_bitcode {
     ($type:ident, $array_type:ty) => {
-        
-        impl borsh::BorshSerialize for $type {
-            #[inline]
-            fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        impl Encode for $type {
+            type Encoder = impl Encoder<Self>;
+        }
 
-                let arr = self.to_array();
-                borsh::to_writer(writer, &arr)?;
+        impl<'a> Decode<'a> for $type {
+            type Decoder = impl Decoder<'a, Self>;
+        }
 
-                Ok(())
+        struct $type Encoder;
+        struct $type Decoder;
+
+        impl Encoder<$type> for $type Encoder {
+            fn encode(&mut self, value: &$type) {
+                let arr = value.to_array();
+                self.encode(&arr);
             }
         }
 
-        impl borsh::BorshDeserialize for $type {
-            #[inline]
-            fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
-
-                let arr = <$array_type>::deserialize_reader(reader)?;
-                let glam = Self::from_array(arr);
-
-                Ok(glam)
+        impl<'a> Decoder<'a, $type> for $type Decoder {
+            fn decode(&mut self) -> $type {
+                let arr: $array_type = self.decode();
+                $type::from_array(arr)
             }
         }
     }
