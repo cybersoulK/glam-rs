@@ -134,6 +134,6 @@ mod u64 {
     use crate::{U64Vec2, U64Vec3, U64Vec4};
  
     impl_borsh!(U64Vec2, [u64; 2]);
-    impl_borsh!(U64Vec3, [u64; 2]);
-    impl_borsh!(U64Vec4, [u64; 2]);
+    impl_borsh!(U64Vec3, [u64; 3]);
+    impl_borsh!(U64Vec4, [u64; 4]);
 }
