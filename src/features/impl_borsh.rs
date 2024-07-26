@@ -63,9 +63,9 @@ mod f64 {
 mod i16 {
     use crate::{I16Vec2, I16Vec3, I16Vec4};
 
-    impl_borsh!(I16Vec2, [i16, 2]);
-    impl_borsh!(I16Vec3, [i16, 3]);
-    impl_borsh!(I16Vec4, [i16, 4]);
+    impl_borsh!(I16Vec2, [i16; 2]);
+    impl_borsh!(I16Vec3, [i16; 3]);
+    impl_borsh!(I16Vec4, [i16; 4]);
 }
 
 mod i32 {
