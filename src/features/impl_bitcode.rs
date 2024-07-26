@@ -4,7 +4,7 @@ struct Decoder;
 
 macro_rules! impl_bitcode {
     ($type:ident, $array_type:ty) => {
-        
+
         use super::{Encoder, Decoder};
 
         impl bitcode::Encode for $type { type Encoder = Encoder; }
@@ -104,6 +104,6 @@ mod u64 {
     use crate::{U64Vec2, U64Vec3, U64Vec4};
  
     impl_bitcode!(U64Vec2, [u64; 2]);
-    impl_bitcode!(U64Vec3, [u64; 2]);
-    impl_bitcode!(U64Vec4, [u64; 2]);
+    impl_bitcode!(U64Vec3, [u64; 3]);
+    impl_bitcode!(U64Vec4, [u64; 4]);
 }
