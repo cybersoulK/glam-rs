@@ -21,6 +21,3 @@ pub mod impl_to_from_array;
 
 #[cfg(feature = "borsh")]
 pub mod impl_borsh;
-
-#[cfg(feature = "bitcode")]
-pub mod impl_bitcode;
