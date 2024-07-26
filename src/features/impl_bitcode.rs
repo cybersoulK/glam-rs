@@ -6,15 +6,15 @@ macro_rules! impl_bitcode {
 
             fn encode(&self, encoder: &mut Self::Encoder) {
                 let arr = self.to_array();
-                arr.encode(encoder);
+                <$array_type as Encode>::encode(&arr, encoder);
             }
         }
 
         impl<'a> Decode<'a> for $type {
             type Decoder = <$array_type as Decode<'a>>::Decoder;
 
-            fn decode(decoder: &mut Self::Decoder) -> Self {
-                let arr = <$array_type>::decode(decoder);
+            fn decode(decoder: &mut <$array_type as Decode<'a>>::Decoder) -> Self {
+                let arr = <$array_type as Decode<'a>>::decode(decoder);
                 Self::from_array(arr)
             }
         }
