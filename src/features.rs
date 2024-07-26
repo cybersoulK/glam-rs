@@ -16,8 +16,11 @@ pub mod impl_serde;
 #[cfg(feature = "rkyv")]
 pub mod impl_rkyv;
 
-#[cfg(feature = "bitcode")]
-pub mod impl_bitcode;
+
+pub mod impl_to_from_array;
 
 #[cfg(feature = "borsh")]
 pub mod impl_borsh;
+
+#[cfg(feature = "bitcode")]
+pub mod impl_bitcode;

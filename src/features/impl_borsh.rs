@@ -1,19 +1,4 @@
 
-macro_rules! impl_to_from_array2 {
-    ($type:ident, $array_type:ty) => {
-
-        impl $type {
-            fn to_array(&self) -> $array_type {
-                self.to_cols_array()
-            }
-            fn from_array(array: $array_type) -> Self {
-                Self::from_cols_array(&array)
-            }
-        }
-    }
-}
-
-
 macro_rules! impl_borsh {
     ($type:ident, $array_type:ty) => {
         
@@ -45,14 +30,6 @@ macro_rules! impl_borsh {
 
 mod f32 {
     use crate::{Affine2, Affine3A, Mat2, Mat3, Mat3A, Mat4, Quat, Vec2, Vec3, Vec3A, Vec4};
-    
-    impl_to_from_array2!(Affine2, [f32; 6]);
-    impl_to_from_array2!(Affine3A, [f32; 12]);
-    impl_to_from_array2!(Mat2, [f32; 4]);
-    impl_to_from_array2!(Mat3, [f32; 9]);
-    impl_to_from_array2!(Mat3A, [f32; 9]);
-    impl_to_from_array2!(Mat4, [f32; 16]);
-
 
     impl_borsh!(Affine2, [f32; 6]);
     impl_borsh!(Affine3A, [f32; 12]);
@@ -70,13 +47,6 @@ mod f32 {
 
 mod f64 {
     use crate::{DAffine2, DAffine3, DMat2, DMat3, DMat4, DQuat, DVec2, DVec3, DVec4};
-
-    impl_to_from_array2!(DAffine2, [f64; 6]);
-    impl_to_from_array2!(DAffine3, [f64; 12]);
-    impl_to_from_array2!(DMat2, [f64; 4]);
-    impl_to_from_array2!(DMat3, [f64; 9]);
-    impl_to_from_array2!(DMat4, [f64; 16]);
-
 
     impl_borsh!(DAffine2, [f64; 6]);
     impl_borsh!(DAffine3, [f64; 12]);
