@@ -4,11 +4,11 @@ macro_rules! impl_to_from_array {
 
         impl $type {
             #[allow(dead_code)]
-            pub(super) fn to_array(&self) -> $array_type {
+            pub(crate) fn to_array(&self) -> $array_type {
                 self.to_cols_array()
             }
             #[allow(dead_code)]
-            pub(super) fn from_array(array: $array_type) -> Self {
+            pub(crate) fn from_array(array: $array_type) -> Self {
                 Self::from_cols_array(&array)
             }
         }
