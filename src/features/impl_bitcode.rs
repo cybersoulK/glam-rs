@@ -1,21 +1,28 @@
 
 macro_rules! impl_bitcode {
     ($type:ident, $array_type:ty) => {
-        impl bitcode::Encode for $type {
-            type Encoder = <$array_type asbitcode:: Encode>::Encoder;
+        impl Encode for $type {
+            type Encoder = $typeEncoder;
+        }
 
-            fn encode(&self, encoder: &mut Self::Encoder) {
-                let arr = self.to_array();
-                <$array_type as Encode>::encode(&arr, encoder);
+        impl<'a> Decode<'a> for $type {
+            type Decoder = $typeDecoder;
+        }
+
+        struct $typeEncoder;
+        struct $typeDecoder;
+
+        impl Encoder<$type> for $typeEncoder {
+            fn encode(&mut self, value: &$type) {
+                let arr = value.to_array();
+                self.encode(&arr);
             }
         }
 
-        impl<'a> bitcode::Decode<'a> for $type {
-            type Decoder = <$array_type as bitcode::Decode<'a>>::Decoder;
-
-            fn decode(decoder: &mut <$array_type as bitcode::Decode<'a>>::Decoder) -> Self {
-                let arr = <$array_type as bitcode::Decode<'a>>::decode(decoder);
-                Self::from_array(arr)
+        impl<'a> Decoder<'a, $type> for $typeDecoder {
+            fn decode(&mut self) -> $type {
+                let arr: $array_type = self.decode();
+                $type::from_array(arr)
             }
         }
     }
