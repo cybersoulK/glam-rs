@@ -4,6 +4,9 @@ struct Decoder;
 
 macro_rules! impl_bitcode {
     ($type:ident, $array_type:ty) => {
+        
+        use super::{Encoder, Decoder};
+
         impl bitcode::Encode for $type { type Encoder = Encoder; }
         impl<'a> bitcode::Decode<'a> for $type { type Decoder = Decoder; }
 
