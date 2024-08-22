@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog], and this project adheres to
 [Semantic Versioning].
 
+## [0.29.0] - 2024-08-20
+
+### Breaking changes
+
+* `EulerRot` has been reimplemented and now has support for 24 different
+  rotation order enum values.
+
+### Fixed
+
+* Reduced the dot threshold at which quaternion slerp uses lerp to improve
+  accuracy.
+
+### Added
+
+* Added 3x3 matrix `from_mat4_minor()` and 2x2 matrix `from_mat3_minor()`
+  methods.
+
+* Added `bvec2`, `bvec3`, `bvec3a`, `bvec4` and `bvec4a` vector mask creation
+  functions.
+
+* Added all 24 possible intrinsic and extrinsic Euler angle rotation
+  combinations to `EulerRot` enum.
+
+* Added `is_finite_mask` method to vector types which returns a vector mask.
+
+* Added `reflect` and `refract` methods to vector types.
+
+* Added `to_euler` methods to matrix types which extracts Euler angles from a
+  rotation matrix for a given `EulerRot`.
+
+* Added generic `map` method to vector types which applies a functor to all
+  vector elements.
+
+* Vector arithmetic ops are now implemented on references.
+
+### Changed
+
+* Vector and quaternion lerp now uses a precise lerp algorithm.
+
 ## [0.28.0] - 2024-06-10
 
 ### Breaking changes
@@ -1081,7 +1120,8 @@ The format is based on [Keep a Changelog], and this project adheres to
 
 [Keep a Changelog]: https://keepachangelog.com/
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
-[Unreleased]: https://github.com/bitshifter/glam-rs/compare/0.28.0...HEAD
+[Unreleased]: https://github.com/bitshifter/glam-rs/compare/0.29.0...HEAD
+[0.29.0]: https://github.com/bitshifter/glam-rs/compare/0.28.0...0.29.0
 [0.28.0]: https://github.com/bitshifter/glam-rs/compare/0.27.0...0.28.0
 [0.27.0]: https://github.com/bitshifter/glam-rs/compare/0.26.0...0.27.0
 [0.26.0]: https://github.com/bitshifter/glam-rs/compare/0.25.0...0.26.0

@@ -152,6 +152,12 @@ macro_rules! impl_vec4_tests {
             assert_eq!($vec4::ONE, v);
         });
 
+        glam_test!(test_map, {
+            let v = $vec4::new(1 as $t, 2 as $t, 3 as $t, 4 as $t);
+            assert_eq!(v.map(|n| n + 3 as $t), v + $vec4::splat(3 as $t));
+            assert_eq!(v.map(|_| 0 as $t), $vec4::ZERO);
+        });
+
         glam_test!(test_with, {
             assert_eq!($vec4::X, $vec4::ZERO.with_x(1 as $t));
             assert_eq!($vec4::Y, $vec4::ZERO.with_y(1 as $t));
@@ -233,6 +239,62 @@ macro_rules! impl_vec4_tests {
             assert_eq!($new(2 as $t, 4 as $t, 0 as $t, 0 as $t), a % 8 as $t);
         });
 
+        glam_test!(test_ops_propagated, {
+            let vec = $new(2 as $t, 4 as $t, 8 as $t, 16 as $t);
+            let scalar = 2 as $t;
+            let g_scalar = 16 as $t;
+
+            assert_eq!((vec + vec), (vec + &vec));
+            assert_eq!((vec + vec), (&vec + vec));
+            assert_eq!((vec + vec), (&vec + &vec));
+            assert_eq!((vec + scalar), (vec + &scalar));
+            assert_eq!((vec + scalar), (&vec + &scalar));
+            assert_eq!((vec + scalar), (&vec + scalar));
+            assert_eq!((scalar + vec), (&scalar + vec));
+            assert_eq!((scalar + vec), (&scalar + &vec));
+            assert_eq!((scalar + vec), (scalar + &vec));
+
+            assert_eq!((vec - vec), (vec - &vec));
+            assert_eq!((vec - vec), (&vec - vec));
+            assert_eq!((vec - vec), (&vec - &vec));
+            assert_eq!((vec - scalar), (vec - &scalar));
+            assert_eq!((vec - scalar), (&vec - &scalar));
+            assert_eq!((vec - scalar), (&vec - scalar));
+            assert_eq!((g_scalar - vec), (&g_scalar - vec));
+            assert_eq!((g_scalar - vec), (&g_scalar - &vec));
+            assert_eq!((g_scalar - vec), (g_scalar - &vec));
+
+            assert_eq!((vec * vec), (vec * &vec));
+            assert_eq!((vec * vec), (&vec * vec));
+            assert_eq!((vec * vec), (&vec * &vec));
+            assert_eq!((vec * scalar), (vec * &scalar));
+            assert_eq!((vec * scalar), (&vec * &scalar));
+            assert_eq!((vec * scalar), (&vec * scalar));
+            assert_eq!((scalar * vec), (&scalar * vec));
+            assert_eq!((scalar * vec), (&scalar * &vec));
+            assert_eq!((scalar * vec), (scalar * &vec));
+
+            assert_eq!((vec / vec), (vec / &vec));
+            assert_eq!((vec / vec), (&vec / vec));
+            assert_eq!((vec / vec), (&vec / &vec));
+            assert_eq!((vec / scalar), (vec / &scalar));
+            assert_eq!((vec / scalar), (&vec / &scalar));
+            assert_eq!((vec / scalar), (&vec / scalar));
+            assert_eq!((scalar / vec), (&scalar / vec));
+            assert_eq!((scalar / vec), (&scalar / &vec));
+            assert_eq!((scalar / vec), (scalar / &vec));
+
+            assert_eq!((vec % vec), (vec % &vec));
+            assert_eq!((vec % vec), (&vec % vec));
+            assert_eq!((vec % vec), (&vec % &vec));
+            assert_eq!((vec % scalar), (vec % &scalar));
+            assert_eq!((vec % scalar), (&vec % &scalar));
+            assert_eq!((vec % scalar), (&vec % scalar));
+            assert_eq!((scalar % vec), (&scalar % vec));
+            assert_eq!((scalar % vec), (&scalar % &vec));
+            assert_eq!((scalar % vec), (scalar % &vec));
+        });
+
         glam_test!(test_assign_ops, {
             let a = $new(1 as $t, 2 as $t, 3 as $t, 4 as $t);
             let mut b = a;
@@ -265,6 +327,47 @@ macro_rules! impl_vec4_tests {
             assert_eq!($new(1 as $t, 2 as $t, 3 as $t, 4 as $t), b);
             b %= b;
             assert_eq!($new(0 as $t, 0 as $t, 0 as $t, 0 as $t), b);
+        });
+
+        glam_test!(test_assign_ops_propagation, {
+            let vec = $new(1 as $t, 2 as $t, 3 as $t, 4 as $t);
+            let mut a = vec;
+            let mut b = vec;
+            let scalar = 2 as $t;
+
+            a += &scalar;
+            b += scalar;
+            assert_eq!(b, a, "AddAssign<Scalar>");
+            a -= &scalar;
+            b -= scalar;
+            assert_eq!(b, a, "SubAssign<Scalar>");
+            a *= &scalar;
+            b *= scalar;
+            assert_eq!(b, a, "MulAssign<Scalar>");
+            a /= &scalar;
+            b /= scalar;
+            assert_eq!(b, a, "DivAssign<Scalar>");
+            a %= &scalar;
+            b %= scalar;
+            assert_eq!(b, a, "MulAssign<Scalar>");
+
+            a = vec;
+            b = vec;
+            a += &vec;
+            b += vec;
+            assert_eq!(b, a, "AddAssign<Vec>");
+            a -= &vec;
+            b -= vec;
+            assert_eq!(b, a, "SubAssign<Vec>");
+            a *= &vec;
+            b *= vec;
+            assert_eq!(b, a, "MulAssign<Vec>");
+            a /= &vec;
+            b /= vec;
+            assert_eq!(b, a, "DivAssign<Vec>");
+            a %= &vec;
+            b %= vec;
+            assert_eq!(b, a, "RemAssign<Vec>");
         });
 
         glam_test!(test_min_max, {
@@ -766,6 +869,11 @@ macro_rules! impl_vec4_signed_tests {
             );
         });
 
+        glam_test!(test_neg_propagation, {
+            let a = $new(1 as $t, 2 as $t, 3 as $t, 4 as $t);
+            assert_eq!(-a, -(&a));
+        });
+
         glam_test!(test_is_negative_bitmask, {
             assert_eq!($vec4::ZERO.is_negative_bitmask(), 0b0000);
             assert_eq!($vec4::ONE.is_negative_bitmask(), 0b0000);
@@ -1116,6 +1224,13 @@ macro_rules! impl_vec4_float_tests {
             assert_approx_eq!(v0, v0.lerp(v1, 0.0));
             assert_approx_eq!(v1, v0.lerp(v1, 1.0));
             assert_approx_eq!($vec4::ZERO, v0.lerp(v1, 0.5));
+        });
+
+        glam_test!(test_lerp_big_difference, {
+            let v0 = $vec4::new(-1e30, -1e30, -1e30, -1e30);
+            let v1 = $vec4::new(16.0, 16.0, 16.0, 16.0);
+            assert_approx_eq!(v0, v0.lerp(v1, 0.0));
+            assert_approx_eq!(v1, v0.lerp(v1, 1.0));
         });
 
         glam_test!(test_move_towards, {
