@@ -2,7 +2,6 @@
 
 use crate::{f32::math, sse2::*, BVec4, BVec4A, Vec2, Vec3, Vec3A};
 
-#[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
 use core::{f32, ops::*};
@@ -148,6 +147,7 @@ impl Vec4 {
     #[inline]
     #[must_use]
     pub const fn from_slice(slice: &[f32]) -> Self {
+        assert!(slice.len() >= 4);
         Self::new(slice[0], slice[1], slice[2], slice[3])
     }
 
@@ -920,6 +920,20 @@ impl Vec4 {
         crate::DVec4::new(self.x as f64, self.y as f64, self.z as f64, self.w as f64)
     }
 
+    /// Casts all elements of `self` to `i8`.
+    #[inline]
+    #[must_use]
+    pub fn as_i8vec4(&self) -> crate::I8Vec4 {
+        crate::I8Vec4::new(self.x as i8, self.y as i8, self.z as i8, self.w as i8)
+    }
+
+    /// Casts all elements of `self` to `u8`.
+    #[inline]
+    #[must_use]
+    pub fn as_u8vec4(&self) -> crate::U8Vec4 {
+        crate::U8Vec4::new(self.x as u8, self.y as u8, self.z as u8, self.w as u8)
+    }
+
     /// Casts all elements of `self` to `i16`.
     #[inline]
     #[must_use]
@@ -1016,9 +1030,9 @@ impl DivAssign<Vec4> for Vec4 {
     }
 }
 
-impl DivAssign<&Self> for Vec4 {
+impl DivAssign<&Vec4> for Vec4 {
     #[inline]
-    fn div_assign(&mut self, rhs: &Self) {
+    fn div_assign(&mut self, rhs: &Vec4) {
         self.div_assign(*rhs)
     }
 }
@@ -1140,9 +1154,9 @@ impl MulAssign<Vec4> for Vec4 {
     }
 }
 
-impl MulAssign<&Self> for Vec4 {
+impl MulAssign<&Vec4> for Vec4 {
     #[inline]
-    fn mul_assign(&mut self, rhs: &Self) {
+    fn mul_assign(&mut self, rhs: &Vec4) {
         self.mul_assign(*rhs)
     }
 }
@@ -1264,9 +1278,9 @@ impl AddAssign<Vec4> for Vec4 {
     }
 }
 
-impl AddAssign<&Self> for Vec4 {
+impl AddAssign<&Vec4> for Vec4 {
     #[inline]
-    fn add_assign(&mut self, rhs: &Self) {
+    fn add_assign(&mut self, rhs: &Vec4) {
         self.add_assign(*rhs)
     }
 }
@@ -1388,9 +1402,9 @@ impl SubAssign<Vec4> for Vec4 {
     }
 }
 
-impl SubAssign<&Self> for Vec4 {
+impl SubAssign<&Vec4> for Vec4 {
     #[inline]
-    fn sub_assign(&mut self, rhs: &Self) {
+    fn sub_assign(&mut self, rhs: &Vec4) {
         self.sub_assign(*rhs)
     }
 }
@@ -1515,9 +1529,9 @@ impl RemAssign<Vec4> for Vec4 {
     }
 }
 
-impl RemAssign<&Self> for Vec4 {
+impl RemAssign<&Vec4> for Vec4 {
     #[inline]
-    fn rem_assign(&mut self, rhs: &Self) {
+    fn rem_assign(&mut self, rhs: &Vec4) {
         self.rem_assign(*rhs)
     }
 }
@@ -1699,7 +1713,6 @@ impl IndexMut<usize> for Vec4 {
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Display for Vec4 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(p) = f.precision() {
@@ -1714,7 +1727,6 @@ impl fmt::Display for Vec4 {
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Debug for Vec4 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_tuple(stringify!(Vec4))
@@ -1850,7 +1862,6 @@ impl From<BVec4> for Vec4 {
 }
 
 #[cfg(not(feature = "scalar-math"))]
-
 impl From<BVec4A> for Vec4 {
     #[inline]
     fn from(v: BVec4A) -> Self {

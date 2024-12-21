@@ -1,8 +1,7 @@
 // Generated from vec.rs.tera template. Edit the template, not the generated file.
 
-use crate::{BVec2, I16Vec2, I64Vec2, IVec2, U16Vec2, U64Vec3, UVec2};
+use crate::{BVec2, I16Vec2, I64Vec2, I8Vec2, IVec2, U16Vec2, U64Vec3, U8Vec2, UVec2};
 
-#[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
 use core::{f32, ops::*};
@@ -107,6 +106,7 @@ impl U64Vec2 {
     #[inline]
     #[must_use]
     pub const fn from_slice(slice: &[u64]) -> Self {
+        assert!(slice.len() >= 2);
         Self::new(slice[0], slice[1])
     }
 
@@ -117,8 +117,7 @@ impl U64Vec2 {
     /// Panics if `slice` is less than 2 elements long.
     #[inline]
     pub fn write_to_slice(self, slice: &mut [u64]) {
-        slice[0] = self.x;
-        slice[1] = self.y;
+        slice[..2].copy_from_slice(&self.to_array());
     }
 
     /// Creates a 3D vector from `self` and the given `z` value.
@@ -318,6 +317,20 @@ impl U64Vec2 {
     #[must_use]
     pub fn as_dvec2(&self) -> crate::DVec2 {
         crate::DVec2::new(self.x as f64, self.y as f64)
+    }
+
+    /// Casts all elements of `self` to `i8`.
+    #[inline]
+    #[must_use]
+    pub fn as_i8vec2(&self) -> crate::I8Vec2 {
+        crate::I8Vec2::new(self.x as i8, self.y as i8)
+    }
+
+    /// Casts all elements of `self` to `u8`.
+    #[inline]
+    #[must_use]
+    pub fn as_u8vec2(&self) -> crate::U8Vec2 {
+        crate::U8Vec2::new(self.x as u8, self.y as u8)
     }
 
     /// Casts all elements of `self` to `i16`.
@@ -526,9 +539,9 @@ impl DivAssign<U64Vec2> for U64Vec2 {
     }
 }
 
-impl DivAssign<&Self> for U64Vec2 {
+impl DivAssign<&U64Vec2> for U64Vec2 {
     #[inline]
-    fn div_assign(&mut self, rhs: &Self) {
+    fn div_assign(&mut self, rhs: &U64Vec2) {
         self.div_assign(*rhs)
     }
 }
@@ -661,9 +674,9 @@ impl MulAssign<U64Vec2> for U64Vec2 {
     }
 }
 
-impl MulAssign<&Self> for U64Vec2 {
+impl MulAssign<&U64Vec2> for U64Vec2 {
     #[inline]
-    fn mul_assign(&mut self, rhs: &Self) {
+    fn mul_assign(&mut self, rhs: &U64Vec2) {
         self.mul_assign(*rhs)
     }
 }
@@ -796,9 +809,9 @@ impl AddAssign<U64Vec2> for U64Vec2 {
     }
 }
 
-impl AddAssign<&Self> for U64Vec2 {
+impl AddAssign<&U64Vec2> for U64Vec2 {
     #[inline]
-    fn add_assign(&mut self, rhs: &Self) {
+    fn add_assign(&mut self, rhs: &U64Vec2) {
         self.add_assign(*rhs)
     }
 }
@@ -931,9 +944,9 @@ impl SubAssign<U64Vec2> for U64Vec2 {
     }
 }
 
-impl SubAssign<&Self> for U64Vec2 {
+impl SubAssign<&U64Vec2> for U64Vec2 {
     #[inline]
-    fn sub_assign(&mut self, rhs: &Self) {
+    fn sub_assign(&mut self, rhs: &U64Vec2) {
         self.sub_assign(*rhs)
     }
 }
@@ -1066,9 +1079,9 @@ impl RemAssign<U64Vec2> for U64Vec2 {
     }
 }
 
-impl RemAssign<&Self> for U64Vec2 {
+impl RemAssign<&U64Vec2> for U64Vec2 {
     #[inline]
-    fn rem_assign(&mut self, rhs: &Self) {
+    fn rem_assign(&mut self, rhs: &U64Vec2) {
         self.rem_assign(*rhs)
     }
 }
@@ -1534,14 +1547,12 @@ impl IndexMut<usize> for U64Vec2 {
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Display for U64Vec2 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[{}, {}]", self.x, self.y)
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Debug for U64Vec2 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_tuple(stringify!(U64Vec2))
@@ -1579,6 +1590,13 @@ impl From<U64Vec2> for (u64, u64) {
     }
 }
 
+impl From<U8Vec2> for U64Vec2 {
+    #[inline]
+    fn from(v: U8Vec2) -> Self {
+        Self::new(u64::from(v.x), u64::from(v.y))
+    }
+}
+
 impl From<U16Vec2> for U64Vec2 {
     #[inline]
     fn from(v: U16Vec2) -> Self {
@@ -1590,6 +1608,15 @@ impl From<UVec2> for U64Vec2 {
     #[inline]
     fn from(v: UVec2) -> Self {
         Self::new(u64::from(v.x), u64::from(v.y))
+    }
+}
+
+impl TryFrom<I8Vec2> for U64Vec2 {
+    type Error = core::num::TryFromIntError;
+
+    #[inline]
+    fn try_from(v: I8Vec2) -> Result<Self, Self::Error> {
+        Ok(Self::new(u64::try_from(v.x)?, u64::try_from(v.y)?))
     }
 }
 

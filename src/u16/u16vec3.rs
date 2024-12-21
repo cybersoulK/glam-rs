@@ -1,8 +1,9 @@
 // Generated from vec.rs.tera template. Edit the template, not the generated file.
 
-use crate::{BVec3, BVec3A, I16Vec3, I64Vec3, IVec3, U16Vec2, U16Vec4, U64Vec3, UVec3};
+use crate::{
+    BVec3, BVec3A, I16Vec3, I64Vec3, I8Vec3, IVec3, U16Vec2, U16Vec4, U64Vec3, U8Vec3, UVec3,
+};
 
-#[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
 use core::{f32, ops::*};
@@ -111,6 +112,7 @@ impl U16Vec3 {
     #[inline]
     #[must_use]
     pub const fn from_slice(slice: &[u16]) -> Self {
+        assert!(slice.len() >= 3);
         Self::new(slice[0], slice[1], slice[2])
     }
 
@@ -121,9 +123,7 @@ impl U16Vec3 {
     /// Panics if `slice` is less than 3 elements long.
     #[inline]
     pub fn write_to_slice(self, slice: &mut [u16]) {
-        slice[0] = self.x;
-        slice[1] = self.y;
-        slice[2] = self.z;
+        slice[..3].copy_from_slice(&self.to_array());
     }
 
     /// Internal method for creating a 3D vector from a 4D vector, discarding `w`.
@@ -375,6 +375,20 @@ impl U16Vec3 {
         crate::DVec3::new(self.x as f64, self.y as f64, self.z as f64)
     }
 
+    /// Casts all elements of `self` to `i8`.
+    #[inline]
+    #[must_use]
+    pub fn as_i8vec3(&self) -> crate::I8Vec3 {
+        crate::I8Vec3::new(self.x as i8, self.y as i8, self.z as i8)
+    }
+
+    /// Casts all elements of `self` to `u8`.
+    #[inline]
+    #[must_use]
+    pub fn as_u8vec3(&self) -> crate::U8Vec3 {
+        crate::U8Vec3::new(self.x as u8, self.y as u8, self.z as u8)
+    }
+
     /// Casts all elements of `self` to `i16`.
     #[inline]
     #[must_use]
@@ -593,9 +607,9 @@ impl DivAssign<U16Vec3> for U16Vec3 {
     }
 }
 
-impl DivAssign<&Self> for U16Vec3 {
+impl DivAssign<&U16Vec3> for U16Vec3 {
     #[inline]
-    fn div_assign(&mut self, rhs: &Self) {
+    fn div_assign(&mut self, rhs: &U16Vec3) {
         self.div_assign(*rhs)
     }
 }
@@ -733,9 +747,9 @@ impl MulAssign<U16Vec3> for U16Vec3 {
     }
 }
 
-impl MulAssign<&Self> for U16Vec3 {
+impl MulAssign<&U16Vec3> for U16Vec3 {
     #[inline]
-    fn mul_assign(&mut self, rhs: &Self) {
+    fn mul_assign(&mut self, rhs: &U16Vec3) {
         self.mul_assign(*rhs)
     }
 }
@@ -873,9 +887,9 @@ impl AddAssign<U16Vec3> for U16Vec3 {
     }
 }
 
-impl AddAssign<&Self> for U16Vec3 {
+impl AddAssign<&U16Vec3> for U16Vec3 {
     #[inline]
-    fn add_assign(&mut self, rhs: &Self) {
+    fn add_assign(&mut self, rhs: &U16Vec3) {
         self.add_assign(*rhs)
     }
 }
@@ -1013,9 +1027,9 @@ impl SubAssign<U16Vec3> for U16Vec3 {
     }
 }
 
-impl SubAssign<&Self> for U16Vec3 {
+impl SubAssign<&U16Vec3> for U16Vec3 {
     #[inline]
-    fn sub_assign(&mut self, rhs: &Self) {
+    fn sub_assign(&mut self, rhs: &U16Vec3) {
         self.sub_assign(*rhs)
     }
 }
@@ -1153,9 +1167,9 @@ impl RemAssign<U16Vec3> for U16Vec3 {
     }
 }
 
-impl RemAssign<&Self> for U16Vec3 {
+impl RemAssign<&U16Vec3> for U16Vec3 {
     #[inline]
-    fn rem_assign(&mut self, rhs: &Self) {
+    fn rem_assign(&mut self, rhs: &U16Vec3) {
         self.rem_assign(*rhs)
     }
 }
@@ -1653,14 +1667,12 @@ impl IndexMut<usize> for U16Vec3 {
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Display for U16Vec3 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[{}, {}, {}]", self.x, self.y, self.z)
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Debug for U16Vec3 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_tuple(stringify!(U16Vec3))
@@ -1703,6 +1715,26 @@ impl From<(U16Vec2, u16)> for U16Vec3 {
     #[inline]
     fn from((v, z): (U16Vec2, u16)) -> Self {
         Self::new(v.x, v.y, z)
+    }
+}
+
+impl From<U8Vec3> for U16Vec3 {
+    #[inline]
+    fn from(v: U8Vec3) -> Self {
+        Self::new(u16::from(v.x), u16::from(v.y), u16::from(v.z))
+    }
+}
+
+impl TryFrom<I8Vec3> for U16Vec3 {
+    type Error = core::num::TryFromIntError;
+
+    #[inline]
+    fn try_from(v: I8Vec3) -> Result<Self, Self::Error> {
+        Ok(Self::new(
+            u16::try_from(v.x)?,
+            u16::try_from(v.y)?,
+            u16::try_from(v.z)?,
+        ))
     }
 }
 

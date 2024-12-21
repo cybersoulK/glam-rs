@@ -6,7 +6,6 @@ use crate::{
     swizzles::*,
     DMat4, EulerRot, Mat3, Mat3A, Quat, Vec3, Vec3A, Vec4,
 };
-#[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
@@ -771,7 +770,10 @@ impl Mat4 {
         Self::look_to_rh(eye, center.sub(eye), up)
     }
 
-    /// Creates a right-handed perspective projection matrix with [-1,1] depth range.
+    /// Creates a right-handed perspective projection matrix with `[-1,1]` depth range.
+    ///
+    /// Useful to map the standard right-handed coordinate system into what OpenGL expects.
+    ///
     /// This is the same as the OpenGL `gluPerspective` function.
     /// See <https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml>
     #[inline]
@@ -797,6 +799,8 @@ impl Mat4 {
 
     /// Creates a left-handed perspective projection matrix with `[0,1]` depth range.
     ///
+    /// Useful to map the standard left-handed coordinate system into what WebGPU/Metal/Direct3D expect.
+    ///
     /// # Panics
     ///
     /// Will panic if `z_near` or `z_far` are less than or equal to zero when `glam_assert` is
@@ -818,6 +822,8 @@ impl Mat4 {
     }
 
     /// Creates a right-handed perspective projection matrix with `[0,1]` depth range.
+    ///
+    /// Useful to map the standard right-handed coordinate system into what WebGPU/Metal/Direct3D expect.
     ///
     /// # Panics
     ///
@@ -841,9 +847,13 @@ impl Mat4 {
 
     /// Creates an infinite left-handed perspective projection matrix with `[0,1]` depth range.
     ///
+    /// Like `perspective_lh`, but with an infinite value for `z_far`.
+    /// The result is that points near `z_near` are mapped to depth `0`, and as they move towards infinity the depth approaches `1`.
+    ///
     /// # Panics
     ///
-    /// Will panic if `z_near` is less than or equal to zero when `glam_assert` is enabled.
+    /// Will panic if `z_near` or `z_far` are less than or equal to zero when `glam_assert` is
+    /// enabled.
     #[inline]
     #[must_use]
     pub fn perspective_infinite_lh(fov_y_radians: f32, aspect_ratio: f32, z_near: f32) -> Self {
@@ -859,7 +869,9 @@ impl Mat4 {
         )
     }
 
-    /// Creates an infinite left-handed perspective projection matrix with `[0,1]` depth range.
+    /// Creates an infinite reverse left-handed perspective projection matrix with `[0,1]` depth range.
+    ///
+    /// Similar to `perspective_infinite_lh`, but maps `Z = z_near` to a depth of `1` and `Z = infinity` to a depth of `0`.
     ///
     /// # Panics
     ///
@@ -883,8 +895,15 @@ impl Mat4 {
         )
     }
 
-    /// Creates an infinite right-handed perspective projection matrix with
-    /// `[0,1]` depth range.
+    /// Creates an infinite right-handed perspective projection matrix with `[0,1]` depth range.
+    ///
+    /// Like `perspective_rh`, but with an infinite value for `z_far`.
+    /// The result is that points near `z_near` are mapped to depth `0`, and as they move towards infinity the depth approaches `1`.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `z_near` or `z_far` are less than or equal to zero when `glam_assert` is
+    /// enabled.
     #[inline]
     #[must_use]
     pub fn perspective_infinite_rh(fov_y_radians: f32, aspect_ratio: f32, z_near: f32) -> Self {
@@ -898,8 +917,13 @@ impl Mat4 {
         )
     }
 
-    /// Creates an infinite reverse right-handed perspective projection matrix
-    /// with `[0,1]` depth range.
+    /// Creates an infinite reverse right-handed perspective projection matrix with `[0,1]` depth range.
+    ///
+    /// Similar to `perspective_infinite_rh`, but maps `Z = z_near` to a depth of `1` and `Z = infinity` to a depth of `0`.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `z_near` is less than or equal to zero when `glam_assert` is enabled.
     #[inline]
     #[must_use]
     pub fn perspective_infinite_reverse_rh(
@@ -921,6 +945,8 @@ impl Mat4 {
     /// range.  This is the same as the OpenGL `glOrtho` function in OpenGL.
     /// See
     /// <https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glOrtho.xml>
+    ///
+    /// Useful to map a right-handed coordinate system to the normalized device coordinates that OpenGL expects.
     #[inline]
     #[must_use]
     pub fn orthographic_rh_gl(
@@ -947,6 +973,8 @@ impl Mat4 {
     }
 
     /// Creates a left-handed orthographic projection matrix with `[0,1]` depth range.
+    ///
+    /// Useful to map a left-handed coordinate system to the normalized device coordinates that WebGPU/Direct3D/Metal expect.
     #[inline]
     #[must_use]
     pub fn orthographic_lh(
@@ -974,6 +1002,8 @@ impl Mat4 {
     }
 
     /// Creates a right-handed orthographic projection matrix with `[0,1]` depth range.
+    ///
+    /// Useful to map a right-handed coordinate system to the normalized device coordinates that WebGPU/Direct3D/Metal expect.
     #[inline]
     #[must_use]
     pub fn orthographic_rh(
@@ -1013,7 +1043,7 @@ impl Mat4 {
         res = self.y_axis.mul(rhs.y).add(res);
         res = self.z_axis.mul(rhs.z).add(res);
         res = self.w_axis.add(res);
-        res = res.mul(res.wwww().recip());
+        res = res.div(res.w);
         res.xyz()
     }
 
@@ -1058,6 +1088,18 @@ impl Mat4 {
         res = self.y_axis.mul(rhs.y).add(res);
         res = self.z_axis.mul(rhs.z).add(res);
         res.xyz()
+    }
+
+    /// Transforms the given [`Vec3A`] as a 3D point, applying perspective correction.
+    ///
+    /// This is the equivalent of multiplying the [`Vec3A`] as a 4D vector where `w` is `1.0`.
+    /// The perspective divide is performed meaning the resulting 3D vector is divided by `w`.
+    ///
+    /// This method assumes that `self` contains a projective transform.
+    #[inline]
+    #[must_use]
+    pub fn project_point3a(&self, rhs: Vec3A) -> Vec3A {
+        self.project_point3(rhs.into()).into()
     }
 
     /// Transforms the given [`Vec3A`] as 3D point.
@@ -1372,7 +1414,6 @@ impl AsMut<[f32; 16]> for Mat4 {
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Debug for Mat4 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_struct(stringify!(Mat4))
@@ -1384,7 +1425,6 @@ impl fmt::Debug for Mat4 {
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Display for Mat4 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(p) = f.precision() {

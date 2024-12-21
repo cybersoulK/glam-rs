@@ -226,8 +226,6 @@ macro_rules! impl_quat_tests {
 
             should_glam_assert!({ ($quat::IDENTITY * 0.5).mul_vec3($vec3::X) });
             should_glam_assert!({ ($quat::IDENTITY * 0.5) * $vec3::X });
-            should_glam_assert!({ ($quat::IDENTITY * 0.5).mul_quat($quat::IDENTITY) });
-            should_glam_assert!({ ($quat::IDENTITY * 0.5) * $quat::IDENTITY });
         });
 
         glam_test!(test_angle_between, {
@@ -358,6 +356,11 @@ macro_rules! impl_quat_tests {
             );
             assert_approx_eq!(q2, q0.rotate_towards(q1, -FRAC_PI_2), eps);
             assert_approx_eq!(q2, q0.rotate_towards(q1, -FRAC_PI_2 * 1.5), eps);
+
+            // Small angles
+            let q0 = $quat::from_euler(EulerRot::YXZ, 0.0, 0.0, 0.0);
+            let q1 = $quat::from_euler(EulerRot::YXZ, 1e-4, 0.0, 0.0);
+            assert_eq!(q1, q0.rotate_towards(q1, FRAC_PI_2))
         });
 
         glam_test!(test_fmt, {

@@ -2,9 +2,8 @@
 
 #[cfg(not(feature = "scalar-math"))]
 use crate::BVec4A;
-use crate::{BVec4, I16Vec4, I64Vec4, IVec4, U16Vec2, U16Vec3, U64Vec4, UVec4};
+use crate::{BVec4, I16Vec4, I64Vec4, I8Vec4, IVec4, U16Vec2, U16Vec3, U64Vec4, U8Vec4, UVec4};
 
-#[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
 use core::{f32, ops::*};
@@ -127,6 +126,7 @@ impl U16Vec4 {
     #[inline]
     #[must_use]
     pub const fn from_slice(slice: &[u16]) -> Self {
+        assert!(slice.len() >= 4);
         Self::new(slice[0], slice[1], slice[2], slice[3])
     }
 
@@ -137,10 +137,7 @@ impl U16Vec4 {
     /// Panics if `slice` is less than 4 elements long.
     #[inline]
     pub fn write_to_slice(self, slice: &mut [u16]) {
-        slice[0] = self.x;
-        slice[1] = self.y;
-        slice[2] = self.z;
-        slice[3] = self.w;
+        slice[..4].copy_from_slice(&self.to_array());
     }
 
     /// Creates a 3D vector from the `x`, `y` and `z` elements of `self`, discarding `w`.
@@ -395,6 +392,20 @@ impl U16Vec4 {
         crate::DVec4::new(self.x as f64, self.y as f64, self.z as f64, self.w as f64)
     }
 
+    /// Casts all elements of `self` to `i8`.
+    #[inline]
+    #[must_use]
+    pub fn as_i8vec4(&self) -> crate::I8Vec4 {
+        crate::I8Vec4::new(self.x as i8, self.y as i8, self.z as i8, self.w as i8)
+    }
+
+    /// Casts all elements of `self` to `u8`.
+    #[inline]
+    #[must_use]
+    pub fn as_u8vec4(&self) -> crate::U8Vec4 {
+        crate::U8Vec4::new(self.x as u8, self.y as u8, self.z as u8, self.w as u8)
+    }
+
     /// Casts all elements of `self` to `i16`.
     #[inline]
     #[must_use]
@@ -625,9 +636,9 @@ impl DivAssign<U16Vec4> for U16Vec4 {
     }
 }
 
-impl DivAssign<&Self> for U16Vec4 {
+impl DivAssign<&U16Vec4> for U16Vec4 {
     #[inline]
-    fn div_assign(&mut self, rhs: &Self) {
+    fn div_assign(&mut self, rhs: &U16Vec4) {
         self.div_assign(*rhs)
     }
 }
@@ -770,9 +781,9 @@ impl MulAssign<U16Vec4> for U16Vec4 {
     }
 }
 
-impl MulAssign<&Self> for U16Vec4 {
+impl MulAssign<&U16Vec4> for U16Vec4 {
     #[inline]
-    fn mul_assign(&mut self, rhs: &Self) {
+    fn mul_assign(&mut self, rhs: &U16Vec4) {
         self.mul_assign(*rhs)
     }
 }
@@ -915,9 +926,9 @@ impl AddAssign<U16Vec4> for U16Vec4 {
     }
 }
 
-impl AddAssign<&Self> for U16Vec4 {
+impl AddAssign<&U16Vec4> for U16Vec4 {
     #[inline]
-    fn add_assign(&mut self, rhs: &Self) {
+    fn add_assign(&mut self, rhs: &U16Vec4) {
         self.add_assign(*rhs)
     }
 }
@@ -1060,9 +1071,9 @@ impl SubAssign<U16Vec4> for U16Vec4 {
     }
 }
 
-impl SubAssign<&Self> for U16Vec4 {
+impl SubAssign<&U16Vec4> for U16Vec4 {
     #[inline]
-    fn sub_assign(&mut self, rhs: &Self) {
+    fn sub_assign(&mut self, rhs: &U16Vec4) {
         self.sub_assign(*rhs)
     }
 }
@@ -1205,9 +1216,9 @@ impl RemAssign<U16Vec4> for U16Vec4 {
     }
 }
 
-impl RemAssign<&Self> for U16Vec4 {
+impl RemAssign<&U16Vec4> for U16Vec4 {
     #[inline]
-    fn rem_assign(&mut self, rhs: &Self) {
+    fn rem_assign(&mut self, rhs: &U16Vec4) {
         self.rem_assign(*rhs)
     }
 }
@@ -1737,14 +1748,12 @@ impl IndexMut<usize> for U16Vec4 {
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Display for U16Vec4 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[{}, {}, {}, {}]", self.x, self.y, self.z, self.w)
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Debug for U16Vec4 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_tuple(stringify!(U16Vec4))
@@ -1809,6 +1818,32 @@ impl From<(U16Vec2, U16Vec2)> for U16Vec4 {
     #[inline]
     fn from((v, u): (U16Vec2, U16Vec2)) -> Self {
         Self::new(v.x, v.y, u.x, u.y)
+    }
+}
+
+impl From<U8Vec4> for U16Vec4 {
+    #[inline]
+    fn from(v: U8Vec4) -> Self {
+        Self::new(
+            u16::from(v.x),
+            u16::from(v.y),
+            u16::from(v.z),
+            u16::from(v.w),
+        )
+    }
+}
+
+impl TryFrom<I8Vec4> for U16Vec4 {
+    type Error = core::num::TryFromIntError;
+
+    #[inline]
+    fn try_from(v: I8Vec4) -> Result<Self, Self::Error> {
+        Ok(Self::new(
+            u16::try_from(v.x)?,
+            u16::try_from(v.y)?,
+            u16::try_from(v.z)?,
+            u16::try_from(v.w)?,
+        ))
     }
 }
 
@@ -1895,7 +1930,6 @@ impl From<BVec4> for U16Vec4 {
 }
 
 #[cfg(not(feature = "scalar-math"))]
-
 impl From<BVec4A> for U16Vec4 {
     #[inline]
     fn from(v: BVec4A) -> Self {

@@ -6,7 +6,6 @@ use crate::{
     swizzles::*,
     DMat3, DQuat, DVec3, DVec4, EulerRot, Mat4,
 };
-#[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
@@ -753,7 +752,10 @@ impl DMat4 {
         Self::look_to_rh(eye, center.sub(eye), up)
     }
 
-    /// Creates a right-handed perspective projection matrix with [-1,1] depth range.
+    /// Creates a right-handed perspective projection matrix with `[-1,1]` depth range.
+    ///
+    /// Useful to map the standard right-handed coordinate system into what OpenGL expects.
+    ///
     /// This is the same as the OpenGL `gluPerspective` function.
     /// See <https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml>
     #[inline]
@@ -779,6 +781,8 @@ impl DMat4 {
 
     /// Creates a left-handed perspective projection matrix with `[0,1]` depth range.
     ///
+    /// Useful to map the standard left-handed coordinate system into what WebGPU/Metal/Direct3D expect.
+    ///
     /// # Panics
     ///
     /// Will panic if `z_near` or `z_far` are less than or equal to zero when `glam_assert` is
@@ -800,6 +804,8 @@ impl DMat4 {
     }
 
     /// Creates a right-handed perspective projection matrix with `[0,1]` depth range.
+    ///
+    /// Useful to map the standard right-handed coordinate system into what WebGPU/Metal/Direct3D expect.
     ///
     /// # Panics
     ///
@@ -823,9 +829,13 @@ impl DMat4 {
 
     /// Creates an infinite left-handed perspective projection matrix with `[0,1]` depth range.
     ///
+    /// Like `perspective_lh`, but with an infinite value for `z_far`.
+    /// The result is that points near `z_near` are mapped to depth `0`, and as they move towards infinity the depth approaches `1`.
+    ///
     /// # Panics
     ///
-    /// Will panic if `z_near` is less than or equal to zero when `glam_assert` is enabled.
+    /// Will panic if `z_near` or `z_far` are less than or equal to zero when `glam_assert` is
+    /// enabled.
     #[inline]
     #[must_use]
     pub fn perspective_infinite_lh(fov_y_radians: f64, aspect_ratio: f64, z_near: f64) -> Self {
@@ -841,7 +851,9 @@ impl DMat4 {
         )
     }
 
-    /// Creates an infinite left-handed perspective projection matrix with `[0,1]` depth range.
+    /// Creates an infinite reverse left-handed perspective projection matrix with `[0,1]` depth range.
+    ///
+    /// Similar to `perspective_infinite_lh`, but maps `Z = z_near` to a depth of `1` and `Z = infinity` to a depth of `0`.
     ///
     /// # Panics
     ///
@@ -865,8 +877,15 @@ impl DMat4 {
         )
     }
 
-    /// Creates an infinite right-handed perspective projection matrix with
-    /// `[0,1]` depth range.
+    /// Creates an infinite right-handed perspective projection matrix with `[0,1]` depth range.
+    ///
+    /// Like `perspective_rh`, but with an infinite value for `z_far`.
+    /// The result is that points near `z_near` are mapped to depth `0`, and as they move towards infinity the depth approaches `1`.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `z_near` or `z_far` are less than or equal to zero when `glam_assert` is
+    /// enabled.
     #[inline]
     #[must_use]
     pub fn perspective_infinite_rh(fov_y_radians: f64, aspect_ratio: f64, z_near: f64) -> Self {
@@ -880,8 +899,13 @@ impl DMat4 {
         )
     }
 
-    /// Creates an infinite reverse right-handed perspective projection matrix
-    /// with `[0,1]` depth range.
+    /// Creates an infinite reverse right-handed perspective projection matrix with `[0,1]` depth range.
+    ///
+    /// Similar to `perspective_infinite_rh`, but maps `Z = z_near` to a depth of `1` and `Z = infinity` to a depth of `0`.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `z_near` is less than or equal to zero when `glam_assert` is enabled.
     #[inline]
     #[must_use]
     pub fn perspective_infinite_reverse_rh(
@@ -903,6 +927,8 @@ impl DMat4 {
     /// range.  This is the same as the OpenGL `glOrtho` function in OpenGL.
     /// See
     /// <https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glOrtho.xml>
+    ///
+    /// Useful to map a right-handed coordinate system to the normalized device coordinates that OpenGL expects.
     #[inline]
     #[must_use]
     pub fn orthographic_rh_gl(
@@ -929,6 +955,8 @@ impl DMat4 {
     }
 
     /// Creates a left-handed orthographic projection matrix with `[0,1]` depth range.
+    ///
+    /// Useful to map a left-handed coordinate system to the normalized device coordinates that WebGPU/Direct3D/Metal expect.
     #[inline]
     #[must_use]
     pub fn orthographic_lh(
@@ -956,6 +984,8 @@ impl DMat4 {
     }
 
     /// Creates a right-handed orthographic projection matrix with `[0,1]` depth range.
+    ///
+    /// Useful to map a right-handed coordinate system to the normalized device coordinates that WebGPU/Direct3D/Metal expect.
     #[inline]
     #[must_use]
     pub fn orthographic_rh(
@@ -995,7 +1025,7 @@ impl DMat4 {
         res = self.y_axis.mul(rhs.y).add(res);
         res = self.z_axis.mul(rhs.z).add(res);
         res = self.w_axis.add(res);
-        res = res.mul(res.wwww().recip());
+        res = res.div(res.w);
         res.xyz()
     }
 
@@ -1336,7 +1366,6 @@ impl AsMut<[f64; 16]> for DMat4 {
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Debug for DMat4 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_struct(stringify!(DMat4))
@@ -1348,7 +1377,6 @@ impl fmt::Debug for DMat4 {
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Display for DMat4 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(p) = f.precision() {

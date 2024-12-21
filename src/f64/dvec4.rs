@@ -4,7 +4,6 @@
 use crate::BVec4A;
 use crate::{f64::math, BVec4, DVec2, DVec3, IVec4, UVec4, Vec4};
 
-#[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
 use core::{f32, ops::*};
@@ -150,6 +149,7 @@ impl DVec4 {
     #[inline]
     #[must_use]
     pub const fn from_slice(slice: &[f64]) -> Self {
+        assert!(slice.len() >= 4);
         Self::new(slice[0], slice[1], slice[2], slice[3])
     }
 
@@ -160,10 +160,7 @@ impl DVec4 {
     /// Panics if `slice` is less than 4 elements long.
     #[inline]
     pub fn write_to_slice(self, slice: &mut [f64]) {
-        slice[0] = self.x;
-        slice[1] = self.y;
-        slice[2] = self.z;
-        slice[3] = self.w;
+        slice[..4].copy_from_slice(&self.to_array());
     }
 
     /// Creates a 3D vector from the `x`, `y` and `z` elements of `self`, discarding `w`.
@@ -976,6 +973,20 @@ impl DVec4 {
         crate::Vec4::new(self.x as f32, self.y as f32, self.z as f32, self.w as f32)
     }
 
+    /// Casts all elements of `self` to `i8`.
+    #[inline]
+    #[must_use]
+    pub fn as_i8vec4(&self) -> crate::I8Vec4 {
+        crate::I8Vec4::new(self.x as i8, self.y as i8, self.z as i8, self.w as i8)
+    }
+
+    /// Casts all elements of `self` to `u8`.
+    #[inline]
+    #[must_use]
+    pub fn as_u8vec4(&self) -> crate::U8Vec4 {
+        crate::U8Vec4::new(self.x as u8, self.y as u8, self.z as u8, self.w as u8)
+    }
+
     /// Casts all elements of `self` to `i16`.
     #[inline]
     #[must_use]
@@ -1073,9 +1084,9 @@ impl DivAssign<DVec4> for DVec4 {
     }
 }
 
-impl DivAssign<&Self> for DVec4 {
+impl DivAssign<&DVec4> for DVec4 {
     #[inline]
-    fn div_assign(&mut self, rhs: &Self) {
+    fn div_assign(&mut self, rhs: &DVec4) {
         self.div_assign(*rhs)
     }
 }
@@ -1218,9 +1229,9 @@ impl MulAssign<DVec4> for DVec4 {
     }
 }
 
-impl MulAssign<&Self> for DVec4 {
+impl MulAssign<&DVec4> for DVec4 {
     #[inline]
-    fn mul_assign(&mut self, rhs: &Self) {
+    fn mul_assign(&mut self, rhs: &DVec4) {
         self.mul_assign(*rhs)
     }
 }
@@ -1363,9 +1374,9 @@ impl AddAssign<DVec4> for DVec4 {
     }
 }
 
-impl AddAssign<&Self> for DVec4 {
+impl AddAssign<&DVec4> for DVec4 {
     #[inline]
-    fn add_assign(&mut self, rhs: &Self) {
+    fn add_assign(&mut self, rhs: &DVec4) {
         self.add_assign(*rhs)
     }
 }
@@ -1508,9 +1519,9 @@ impl SubAssign<DVec4> for DVec4 {
     }
 }
 
-impl SubAssign<&Self> for DVec4 {
+impl SubAssign<&DVec4> for DVec4 {
     #[inline]
-    fn sub_assign(&mut self, rhs: &Self) {
+    fn sub_assign(&mut self, rhs: &DVec4) {
         self.sub_assign(*rhs)
     }
 }
@@ -1653,9 +1664,9 @@ impl RemAssign<DVec4> for DVec4 {
     }
 }
 
-impl RemAssign<&Self> for DVec4 {
+impl RemAssign<&DVec4> for DVec4 {
     #[inline]
-    fn rem_assign(&mut self, rhs: &Self) {
+    fn rem_assign(&mut self, rhs: &DVec4) {
         self.rem_assign(*rhs)
     }
 }
@@ -1855,7 +1866,6 @@ impl IndexMut<usize> for DVec4 {
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Display for DVec4 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(p) = f.precision() {
@@ -1870,7 +1880,6 @@ impl fmt::Display for DVec4 {
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Debug for DVec4 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_tuple(stringify!(DVec4))
@@ -1987,7 +1996,6 @@ impl From<BVec4> for DVec4 {
 }
 
 #[cfg(not(feature = "scalar-math"))]
-
 impl From<BVec4A> for DVec4 {
     #[inline]
     fn from(v: BVec4A) -> Self {

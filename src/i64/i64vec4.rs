@@ -2,9 +2,8 @@
 
 #[cfg(not(feature = "scalar-math"))]
 use crate::BVec4A;
-use crate::{BVec4, I16Vec4, I64Vec2, I64Vec3, IVec4, U16Vec4, U64Vec4, UVec4};
+use crate::{BVec4, I16Vec4, I64Vec2, I64Vec3, I8Vec4, IVec4, U16Vec4, U64Vec4, U8Vec4, UVec4};
 
-#[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
 use core::{f32, ops::*};
@@ -142,6 +141,7 @@ impl I64Vec4 {
     #[inline]
     #[must_use]
     pub const fn from_slice(slice: &[i64]) -> Self {
+        assert!(slice.len() >= 4);
         Self::new(slice[0], slice[1], slice[2], slice[3])
     }
 
@@ -152,10 +152,7 @@ impl I64Vec4 {
     /// Panics if `slice` is less than 4 elements long.
     #[inline]
     pub fn write_to_slice(self, slice: &mut [i64]) {
-        slice[0] = self.x;
-        slice[1] = self.y;
-        slice[2] = self.z;
-        slice[3] = self.w;
+        slice[..4].copy_from_slice(&self.to_array());
     }
 
     /// Creates a 3D vector from the `x`, `y` and `z` elements of `self`, discarding `w`.
@@ -490,6 +487,20 @@ impl I64Vec4 {
         crate::DVec4::new(self.x as f64, self.y as f64, self.z as f64, self.w as f64)
     }
 
+    /// Casts all elements of `self` to `i8`.
+    #[inline]
+    #[must_use]
+    pub fn as_i8vec4(&self) -> crate::I8Vec4 {
+        crate::I8Vec4::new(self.x as i8, self.y as i8, self.z as i8, self.w as i8)
+    }
+
+    /// Casts all elements of `self` to `u8`.
+    #[inline]
+    #[must_use]
+    pub fn as_u8vec4(&self) -> crate::U8Vec4 {
+        crate::U8Vec4::new(self.x as u8, self.y as u8, self.z as u8, self.w as u8)
+    }
+
     /// Casts all elements of `self` to `i16`.
     #[inline]
     #[must_use]
@@ -748,9 +759,9 @@ impl DivAssign<I64Vec4> for I64Vec4 {
     }
 }
 
-impl DivAssign<&Self> for I64Vec4 {
+impl DivAssign<&I64Vec4> for I64Vec4 {
     #[inline]
-    fn div_assign(&mut self, rhs: &Self) {
+    fn div_assign(&mut self, rhs: &I64Vec4) {
         self.div_assign(*rhs)
     }
 }
@@ -893,9 +904,9 @@ impl MulAssign<I64Vec4> for I64Vec4 {
     }
 }
 
-impl MulAssign<&Self> for I64Vec4 {
+impl MulAssign<&I64Vec4> for I64Vec4 {
     #[inline]
-    fn mul_assign(&mut self, rhs: &Self) {
+    fn mul_assign(&mut self, rhs: &I64Vec4) {
         self.mul_assign(*rhs)
     }
 }
@@ -1038,9 +1049,9 @@ impl AddAssign<I64Vec4> for I64Vec4 {
     }
 }
 
-impl AddAssign<&Self> for I64Vec4 {
+impl AddAssign<&I64Vec4> for I64Vec4 {
     #[inline]
-    fn add_assign(&mut self, rhs: &Self) {
+    fn add_assign(&mut self, rhs: &I64Vec4) {
         self.add_assign(*rhs)
     }
 }
@@ -1183,9 +1194,9 @@ impl SubAssign<I64Vec4> for I64Vec4 {
     }
 }
 
-impl SubAssign<&Self> for I64Vec4 {
+impl SubAssign<&I64Vec4> for I64Vec4 {
     #[inline]
-    fn sub_assign(&mut self, rhs: &Self) {
+    fn sub_assign(&mut self, rhs: &I64Vec4) {
         self.sub_assign(*rhs)
     }
 }
@@ -1328,9 +1339,9 @@ impl RemAssign<I64Vec4> for I64Vec4 {
     }
 }
 
-impl RemAssign<&Self> for I64Vec4 {
+impl RemAssign<&I64Vec4> for I64Vec4 {
     #[inline]
-    fn rem_assign(&mut self, rhs: &Self) {
+    fn rem_assign(&mut self, rhs: &I64Vec4) {
         self.rem_assign(*rhs)
     }
 }
@@ -1881,14 +1892,12 @@ impl IndexMut<usize> for I64Vec4 {
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Display for I64Vec4 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[{}, {}, {}, {}]", self.x, self.y, self.z, self.w)
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Debug for I64Vec4 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_tuple(stringify!(I64Vec4))
@@ -1953,6 +1962,30 @@ impl From<(I64Vec2, I64Vec2)> for I64Vec4 {
     #[inline]
     fn from((v, u): (I64Vec2, I64Vec2)) -> Self {
         Self::new(v.x, v.y, u.x, u.y)
+    }
+}
+
+impl From<I8Vec4> for I64Vec4 {
+    #[inline]
+    fn from(v: I8Vec4) -> Self {
+        Self::new(
+            i64::from(v.x),
+            i64::from(v.y),
+            i64::from(v.z),
+            i64::from(v.w),
+        )
+    }
+}
+
+impl From<U8Vec4> for I64Vec4 {
+    #[inline]
+    fn from(v: U8Vec4) -> Self {
+        Self::new(
+            i64::from(v.x),
+            i64::from(v.y),
+            i64::from(v.z),
+            i64::from(v.w),
+        )
     }
 }
 
@@ -2031,7 +2064,6 @@ impl From<BVec4> for I64Vec4 {
 }
 
 #[cfg(not(feature = "scalar-math"))]
-
 impl From<BVec4A> for I64Vec4 {
     #[inline]
     fn from(v: BVec4A) -> Self {

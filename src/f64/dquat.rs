@@ -6,7 +6,6 @@ use crate::{
     DMat3, DMat4, DVec2, DVec3, DVec4, Quat,
 };
 
-#[cfg(not(target_arch = "spirv"))]
 use core::fmt;
 use core::iter::{Product, Sum};
 use core::ops::{Add, Div, Mul, MulAssign, Neg, Sub};
@@ -510,6 +509,7 @@ impl DQuat {
         DVec4::from(self).is_finite()
     }
 
+    /// Returns `true` if any elements are `NAN`.
     #[inline]
     #[must_use]
     pub fn is_nan(self) -> bool {
@@ -579,7 +579,7 @@ impl DQuat {
         glam_assert!(self.is_normalized() && rhs.is_normalized());
         let angle = self.angle_between(rhs);
         if angle <= 1e-4 {
-            return *self;
+            return rhs;
         }
         let s = (max_angle / angle).clamp(-1.0, 1.0);
         self.slerp(rhs, s)
@@ -698,9 +698,6 @@ impl DQuat {
     #[inline]
     #[must_use]
     pub fn mul_quat(self, rhs: Self) -> Self {
-        glam_assert!(self.is_normalized());
-        glam_assert!(rhs.is_normalized());
-
         let (x0, y0, z0, w0) = self.into();
         let (x1, y1, z1, w1) = rhs.into();
         Self::from_xyzw(
@@ -738,7 +735,6 @@ impl DQuat {
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Debug for DQuat {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_tuple(stringify!(DQuat))
@@ -750,7 +746,6 @@ impl fmt::Debug for DQuat {
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl fmt::Display for DQuat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(p) = f.precision() {
